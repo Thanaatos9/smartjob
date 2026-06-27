@@ -31,7 +31,18 @@ export function DeleteOfferButton({
     }
 
     setPending(true);
-    const res = await fetch(`/api/offers/${offerId}`, { method: "DELETE" });
+    const res = await fetch(`/api/offers/${offerId}`, {
+      method: "DELETE",
+      redirect: "manual",
+    });
+
+    // Une réponse opaque/redirigée = session expirée : on ne fait pas comme si
+    // c'était un succès (fetch suivrait sinon la redirection vers /login en 200).
+    if (res.type === "opaqueredirect" || res.status === 0) {
+      setPending(false);
+      window.alert("Session expirée. Reconnecte-toi puis réessaie.");
+      return;
+    }
 
     if (!res.ok) {
       setPending(false);

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DeleteOfferButton } from "@/components/delete-offer-button";
 import { statusLabel, statusVariant, STATUS_LABELS } from "@/lib/offer-status";
+import { offerSource } from "@/lib/offer-source";
 import { MapPin, ListFilter, X, Trash2 } from "lucide-react";
 
 export type ExplorerOffer = {
@@ -19,6 +20,8 @@ export type ExplorerOffer = {
   remote: boolean | null;
   status: string;
   search_id: string | null;
+  url: string | null;
+  domain: string | null;
 };
 
 export type SearchOption = { id: string; keyword: string };
@@ -108,7 +111,14 @@ export function OffersExplorer({
     setDeleting(true);
     const res = await fetch(`/api/searches/${selectedSearch.id}/offers`, {
       method: "DELETE",
+      redirect: "manual",
     });
+
+    if (res.type === "opaqueredirect" || res.status === 0) {
+      setDeleting(false);
+      window.alert("Session expirée. Reconnecte-toi puis réessaie.");
+      return;
+    }
 
     if (!res.ok) {
       setDeleting(false);
@@ -231,9 +241,19 @@ export function OffersExplorer({
                   <h3 className="font-semibold leading-snug group-hover:text-primary">
                     {offer.title ?? "Sans titre"}
                   </h3>
-                  <Badge variant={statusVariant(offer.status)} className="shrink-0">
-                    {statusLabel(offer.status)}
-                  </Badge>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant={statusVariant(offer.status)}>
+                      {statusLabel(offer.status)}
+                    </Badge>
+                    {(() => {
+                      const source = offerSource(offer);
+                      return source ? (
+                        <Badge variant="outline" className={source.className}>
+                          {source.label}
+                        </Badge>
+                      ) : null;
+                    })()}
+                  </div>
                 </div>
                 <p className="pointer-events-none relative z-10 text-sm font-medium text-foreground">
                   {offer.company ?? "Entreprise inconnue"}

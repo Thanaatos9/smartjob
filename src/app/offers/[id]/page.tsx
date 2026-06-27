@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusSelect } from "@/components/status-select";
+import { offerSource } from "@/lib/offer-source";
 import { MarkAppliedButton } from "@/components/mark-applied-button";
 import { DeleteOfferButton } from "@/components/delete-offer-button";
 import {
@@ -81,6 +82,14 @@ export default async function OfferDetailPage({
             {offer.location}
           </span>
         )}
+        {(() => {
+          const source = offerSource(offer);
+          return source ? (
+            <Badge variant="outline" className={source.className}>
+              {source.label}
+            </Badge>
+          ) : null;
+        })()}
       </p>
 
       <div className="mb-8">
