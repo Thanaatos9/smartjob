@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DeleteOfferButton } from "@/components/delete-offer-button";
 import { statusLabel, statusVariant, STATUS_LABELS } from "@/lib/offer-status";
-import { MapPin, ListFilter, X } from "lucide-react";
+import { MapPin, ListFilter, X, Trash2 } from "lucide-react";
 
 export type ExplorerOffer = {
   id: string;
@@ -64,6 +64,12 @@ export function OffersExplorer({
     [list]
   );
 
+  // N'affiche dans le filtre que les recherches ayant encore au moins une offre.
+  const availableSearches = useMemo(() => {
+    const ids = new Set(list.map((o) => o.search_id).filter(Boolean));
+    return searches.filter((s) => ids.has(s.id));
+  }, [list, searches]);
+
   const filtered = useMemo(
     () =>
       list.filter((o) => {
@@ -81,6 +87,40 @@ export function OffersExplorer({
   const set = (key: keyof Filters) => (v: string) =>
     setFilters((f) => ({ ...f, [key]: v }));
   const activeCount = Object.values(filters).filter(Boolean).length;
+
+  const [deleting, setDeleting] = useState(false);
+  const selectedSearch = searches.find((s) => s.id === filters.search);
+  const searchCount = useMemo(
+    () => (filters.search ? list.filter((o) => o.search_id === filters.search).length : 0),
+    [list, filters.search]
+  );
+
+  async function deleteSearch() {
+    if (!selectedSearch) return;
+    if (
+      !window.confirm(
+        `Supprimer définitivement les ${searchCount} offre${searchCount > 1 ? "s" : ""} de la recherche « ${selectedSearch.keyword} » et leurs lettres ? Cette action est irréversible.`
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    const res = await fetch(`/api/searches/${selectedSearch.id}/offers`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      setDeleting(false);
+      const data = await res.json().catch(() => ({}));
+      window.alert(data.error ?? "Erreur lors de la suppression");
+      return;
+    }
+
+    setList((l) => l.filter((o) => o.search_id !== selectedSearch.id));
+    setFilters((f) => ({ ...f, search: "" }));
+    setDeleting(false);
+  }
 
   return (
     <>
@@ -138,7 +178,7 @@ export function OffersExplorer({
 
           <FilterSelect label="Recherche" value={filters.search} onChange={set("search")}>
             <option value="">Toutes</option>
-            {searches.map((s) => (
+            {availableSearches.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.keyword}
               </option>
@@ -147,10 +187,27 @@ export function OffersExplorer({
         </div>
       </Card>
 
-      <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
-        {filtered.length} offre{filtered.length > 1 ? "s" : ""}
-        {activeCount > 0 ? " (filtrées)" : ""}
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          {filtered.length} offre{filtered.length > 1 ? "s" : ""}
+          {activeCount > 0 ? " (filtrées)" : ""}
+        </h2>
+        {selectedSearch && searchCount > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={deleteSearch}
+            disabled={deleting}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 aria-hidden />
+            {deleting
+              ? "Suppression..."
+              : `Supprimer toute cette recherche (${searchCount})`}
+          </Button>
+        )}
+      </div>
 
       {filtered.length === 0 ? (
         <Card className="p-10 text-center">
