@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { DeleteOfferButton } from "@/components/delete-offer-button";
 import { statusLabel, statusVariant, STATUS_LABELS } from "@/lib/offer-status";
 import { MapPin, ListFilter, X } from "lucide-react";
 
@@ -42,29 +43,30 @@ export function OffersExplorer({
   initialSearchId?: string;
 }) {
   const [filters, setFilters] = useState<Filters>({ ...EMPTY, search: initialSearchId });
+  const [list, setList] = useState(offers);
 
   const villes = useMemo(
     () =>
-      Array.from(new Set(offers.map((o) => o.location).filter(Boolean) as string[])).sort(
+      Array.from(new Set(list.map((o) => o.location).filter(Boolean) as string[])).sort(
         (a, b) => a.localeCompare(b, "fr")
       ),
-    [offers]
+    [list]
   );
   const contrats = useMemo(
     () =>
       Array.from(
-        new Set(offers.map((o) => o.contract_type).filter(Boolean) as string[])
+        new Set(list.map((o) => o.contract_type).filter(Boolean) as string[])
       ).sort((a, b) => a.localeCompare(b, "fr")),
-    [offers]
+    [list]
   );
   const statuts = useMemo(
-    () => Array.from(new Set(offers.map((o) => o.status))),
-    [offers]
+    () => Array.from(new Set(list.map((o) => o.status))),
+    [list]
   );
 
   const filtered = useMemo(
     () =>
-      offers.filter((o) => {
+      list.filter((o) => {
         if (filters.search && o.search_id !== filters.search) return false;
         if (filters.ville && o.location !== filters.ville) return false;
         if (filters.contrat && o.contract_type !== filters.contrat) return false;
@@ -73,7 +75,7 @@ export function OffersExplorer({
         if (filters.statut && o.status !== filters.statut) return false;
         return true;
       }),
-    [offers, filters]
+    [list, filters]
   );
 
   const set = (key: keyof Filters) => (v: string) =>
@@ -153,7 +155,7 @@ export function OffersExplorer({
       {filtered.length === 0 ? (
         <Card className="p-10 text-center">
           <p className="text-sm text-muted-foreground">
-            {offers.length === 0
+            {list.length === 0
               ? "Aucune offre pour le moment. Ajoute une URL ou colle le texte d'une offre ci-dessus."
               : "Aucune offre ne correspond à ces filtres."}
           </p>
@@ -162,28 +164,42 @@ export function OffersExplorer({
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((offer) => (
             <li key={offer.id}>
-              <Link href={`/offers/${offer.id}`} className="group block h-full">
-                <Card className="flex h-full flex-col gap-3 p-5 transition-all group-hover:border-primary/40 group-hover:shadow-md">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold leading-snug group-hover:text-primary">
-                      {offer.title ?? "Sans titre"}
-                    </h3>
-                    <Badge variant={statusVariant(offer.status)} className="shrink-0">
-                      {statusLabel(offer.status)}
-                    </Badge>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    {offer.company ?? "Entreprise inconnue"}
-                  </p>
-                  {offer.location && (
-                    <p className="mt-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Card className="group relative flex h-full flex-col gap-3 p-5 transition-all hover:border-primary/40 hover:shadow-md">
+                <Link
+                  href={`/offers/${offer.id}`}
+                  className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  aria-label={offer.title ?? "Voir l'offre"}
+                />
+                <div className="pointer-events-none relative z-10 flex items-start justify-between gap-3">
+                  <h3 className="font-semibold leading-snug group-hover:text-primary">
+                    {offer.title ?? "Sans titre"}
+                  </h3>
+                  <Badge variant={statusVariant(offer.status)} className="shrink-0">
+                    {statusLabel(offer.status)}
+                  </Badge>
+                </div>
+                <p className="pointer-events-none relative z-10 text-sm font-medium text-foreground">
+                  {offer.company ?? "Entreprise inconnue"}
+                </p>
+                <div className="pointer-events-none relative z-10 mt-auto flex items-end justify-between gap-2">
+                  {offer.location ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <MapPin className="size-3.5" aria-hidden />
                       {offer.location}
                       {offer.remote ? " · Télétravail" : ""}
                     </p>
+                  ) : (
+                    <span />
                   )}
-                </Card>
-              </Link>
+                  <span className="pointer-events-auto">
+                    <DeleteOfferButton
+                      offerId={offer.id}
+                      onDeleted={() => setList((l) => l.filter((o) => o.id !== offer.id))}
+                      iconOnly
+                    />
+                  </span>
+                </div>
+              </Card>
             </li>
           ))}
         </ul>

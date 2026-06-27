@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { statusLabel, statusVariant } from "@/lib/offer-status";
+import { StatusSelect } from "@/components/status-select";
+import { MarkAppliedButton } from "@/components/mark-applied-button";
+import { DeleteOfferButton } from "@/components/delete-offer-button";
 import {
   ArrowLeft,
   Building2,
@@ -54,18 +56,19 @@ export default async function OfferDetailPage({
     <AppShell
       title={offer.title ?? "Offre"}
       actions={
-        <Badge variant={statusVariant(offer.status)} className="text-sm">
-          {statusLabel(offer.status)}
-        </Badge>
+        <StatusSelect key={offer.status} offerId={offer.id} status={offer.status} />
       }
     >
-      <Link
-        href="/dashboard"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Retour aux offres
-      </Link>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Retour aux offres
+        </Link>
+        <DeleteOfferButton offerId={offer.id} redirectTo="/applications" label="Supprimer l'offre" />
+      </div>
 
       <p className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span className="flex items-center gap-1.5 font-medium text-foreground">
@@ -79,6 +82,10 @@ export default async function OfferDetailPage({
           </span>
         )}
       </p>
+
+      <div className="mb-8">
+        <MarkAppliedButton offerId={offer.id} status={offer.status} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
@@ -137,6 +144,10 @@ export default async function OfferDetailPage({
               Voir l&apos;offre originale
             </a>
           )}
+
+          <div className="border-t border-border pt-6">
+            <MarkAppliedButton offerId={offer.id} status={offer.status} />
+          </div>
         </div>
 
         <div className="lg:col-span-1">

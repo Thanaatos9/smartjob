@@ -21,6 +21,13 @@ export const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   accepted: "success",
 };
 
+// Statuts considérés comme une candidature active (offre où l'on a postulé).
+export const CANDIDATE_STATUSES = ["applied", "interview", "rejected", "accepted"] as const;
+
+export function isCandidateStatus(status: string) {
+  return (CANDIDATE_STATUSES as readonly string[]).includes(status);
+}
+
 export function statusLabel(status: string) {
   return STATUS_LABELS[status] ?? status;
 }
