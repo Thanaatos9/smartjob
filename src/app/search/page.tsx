@@ -100,6 +100,20 @@ function SearchPageInner() {
 
   const duplicateCount = duplicateIds.size;
 
+  // Dédoublonne les recherches récentes par mot-clé (garde la plus récente).
+  // L'historique arrive trié par date décroissante depuis l'API.
+  const recentSearches = useMemo(() => {
+    const seen = new Set<string>();
+    const out: SearchHistoryRow[] = [];
+    for (const h of history) {
+      const key = h.keyword.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(h);
+    }
+    return out;
+  }, [history]);
+
   const villes = useMemo(
     () =>
       Array.from(
@@ -160,14 +174,14 @@ function SearchPageInner() {
         </form>
       </Card>
 
-      {history.length > 0 && (
+      {recentSearches.length > 0 && (
         <div className="mb-8">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
             <History className="size-3.5" aria-hidden />
             Recherches récentes
           </p>
           <div className="flex flex-wrap gap-2">
-            {history.map((h) => (
+            {recentSearches.map((h) => (
               <button
                 key={h.id}
                 type="button"

@@ -18,19 +18,55 @@ export async function POST(request: Request) {
   }
 
   const trimmed = keyword.trim();
+  const now = new Date().toISOString();
 
   // 1. Enregistre la recherche dans l'historique (source de vérité côté app).
-  const { data: search, error: searchErr } = await supabase
+  //    Réutilise une recherche existante au même mot-clé (insensible à la
+  //    casse/espaces) pour éviter d'accumuler des doublons en base.
+  const { data: existingRows } = await supabase
     .from("searches")
-    .insert({ user_id: user.id, keyword: trimmed, status: "running" })
-    .select("id")
-    .single();
+    .select("id, keyword")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
-  if (searchErr || !search) {
-    return NextResponse.json(
-      { error: "Impossible d'enregistrer la recherche" },
-      { status: 500 }
-    );
+  const normalized = trimmed.toLowerCase();
+  const existing = (existingRows ?? []).find(
+    (s) => s.keyword.trim().toLowerCase() === normalized
+  );
+
+  let searchId: string;
+
+  if (existing) {
+    // Réutilise la ligne : remonte la date pour qu'elle soit "récente".
+    const { data: updated, error: updErr } = await supabase
+      .from("searches")
+      .update({ keyword: trimmed, status: "running", created_at: now })
+      .eq("id", existing.id)
+      .eq("user_id", user.id)
+      .select("id")
+      .single();
+
+    if (updErr || !updated) {
+      return NextResponse.json(
+        { error: "Impossible d'enregistrer la recherche" },
+        { status: 500 }
+      );
+    }
+    searchId = updated.id;
+  } else {
+    const { data: inserted, error: insErr } = await supabase
+      .from("searches")
+      .insert({ user_id: user.id, keyword: trimmed, status: "running" })
+      .select("id")
+      .single();
+
+    if (insErr || !inserted) {
+      return NextResponse.json(
+        { error: "Impossible d'enregistrer la recherche" },
+        { status: 500 }
+      );
+    }
+    searchId = inserted.id;
   }
 
   // 2. Snapshot des offres déjà connues (pour détecter les doublons).
@@ -55,7 +91,7 @@ export async function POST(request: Request) {
     if (ids.length > 0) {
       await supabase
         .from("offers")
-        .update({ search_id: search.id })
+        .update({ search_id: searchId })
         .eq("user_id", user.id)
         .is("search_id", null)
         .in("id", ids);
@@ -77,14 +113,14 @@ export async function POST(request: Request) {
         result_count: offers.length,
         duplicate_count: duplicateIds.length,
       })
-      .eq("id", search.id);
+      .eq("id", searchId);
 
-    return NextResponse.json({ searchId: search.id, offers, duplicateIds });
+    return NextResponse.json({ searchId, offers, duplicateIds });
   } catch (err) {
     await supabase
       .from("searches")
       .update({ status: "error" })
-      .eq("id", search.id);
+      .eq("id", searchId);
 
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Erreur inconnue" },
