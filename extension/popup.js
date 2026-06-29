@@ -4,7 +4,6 @@ const els = {
   email: document.getElementById("email"),
   password: document.getElementById("password"),
   loginBtn: document.getElementById("loginBtn"),
-  accountEmail: document.getElementById("accountEmail"),
   logoutBtn: document.getElementById("logoutBtn"),
   url: document.getElementById("url"),
   send: document.getElementById("send"),
@@ -69,7 +68,6 @@ async function render() {
   if (auth?.access_token) {
     els.loginView.classList.add("hidden");
     els.mainView.classList.remove("hidden");
-    els.accountEmail.textContent = auth.email || "Connecté";
   } else {
     els.mainView.classList.add("hidden");
     els.loginView.classList.remove("hidden");

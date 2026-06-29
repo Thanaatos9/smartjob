@@ -6,14 +6,18 @@
     <title>Envoyer l'offre</title>
     <style>
       :root {
+        /* Palette alignée sur la plateforme : blanc / vert / noir */
         --bg: #ffffff;
-        --fg: #0f172a;
-        --muted: #64748b;
-        --border: #e2e8f0;
-        --primary: #4f46e5;
+        --fg: #0a0a0a;
+        --muted: #525252;
+        --border: #e5e5e5;
+        --primary: #16a34a;
         --primary-fg: #ffffff;
+        --secondary: #f0fdf4;
+        --secondary-fg: #15803d;
         --success: #16a34a;
         --danger: #dc2626;
+        --radius: 12px;
       }
       * { box-sizing: border-box; }
       body {
@@ -28,9 +32,9 @@
       .url {
         font-size: 12px;
         color: var(--muted);
-        background: #f8fafc;
+        background: var(--secondary);
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: var(--radius);
         padding: 8px 10px;
         word-break: break-all;
         max-height: 60px;
@@ -41,7 +45,7 @@
         font-size: 13px;
         padding: 9px 10px;
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: var(--radius);
         color: var(--fg);
         width: 100%;
       }
@@ -49,7 +53,7 @@
         font: inherit;
         font-weight: 600;
         font-size: 13px;
-        border-radius: 8px;
+        border-radius: var(--radius);
         padding: 10px 12px;
         cursor: pointer;
         border: 1px solid transparent;
@@ -59,7 +63,7 @@
       .primary { background: var(--primary); color: var(--primary-fg); }
       .primary:hover:not(:disabled) { opacity: 0.9; }
       .secondary { background: #fff; color: var(--fg); border-color: var(--border); }
-      .secondary:hover:not(:disabled) { background: #f8fafc; }
+      .secondary:hover:not(:disabled) { background: var(--secondary); }
       .success { background: var(--success); color: #fff; }
       .success:hover { opacity: 0.9; }
       .status { font-size: 12px; min-height: 16px; }
@@ -68,7 +72,7 @@
       .status.info { color: var(--muted); }
       .hidden { display: none; }
       .account {
-        display: flex; align-items: center; justify-content: space-between;
+        display: flex; align-items: center; justify-content: flex-end;
         font-size: 12px; color: var(--muted);
       }
       .link { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 12px; padding: 0; }
@@ -97,7 +101,6 @@
       <!-- Action principale (visible si connecté) -->
       <div id="mainView" class="row hidden">
         <div class="account">
-          <span id="accountEmail"></span>
           <button id="logoutBtn" class="link">Déconnexion</button>
         </div>
         <div id="url" class="url">…</div>
