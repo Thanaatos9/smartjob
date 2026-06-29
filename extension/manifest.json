@@ -3,13 +3,20 @@
   "name": "Candidature — Envoyer l'offre",
   "version": "1.0.0",
   "description": "Envoie l'URL de l'offre de l'onglet courant vers la plateforme de candidature, en un clic.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Envoyer cette offre"
+    "default_title": "Envoyer cette offre",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
-  "permissions": ["tabs", "storage"],
-  "host_permissions": [
-    "http://localhost:3000/*",
-    "https://smartjob.samuelrilos.com/*"
-  ]
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://smartjob.samuelrilos.com/*"]
 }
