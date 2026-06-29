@@ -61,6 +61,10 @@ export async function triggerLetterGeneration(payload: GenerateLetterPayload) {
 export type SearchPayload = {
   userId: string;
   keyword: string;
+  // L'app est la source de vérité pour la table `searches` : elle a déjà
+  // créé/réutilisé la ligne avant d'appeler le webhook. n8n doit référencer
+  // ce searchId plutôt que de recréer une ligne (sinon doublon -> 23505).
+  searchId: string;
 };
 
 export type SearchOfferResult = {
