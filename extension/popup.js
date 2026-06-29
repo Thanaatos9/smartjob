@@ -10,10 +10,6 @@ const els = {
   send: document.getElementById("send"),
   open: document.getElementById("open"),
   status: document.getElementById("status"),
-  toggleSettings: document.getElementById("toggleSettings"),
-  settings: document.getElementById("settings"),
-  platformUrl: document.getElementById("platformUrl"),
-  saveSettings: document.getElementById("saveSettings"),
 };
 
 let currentTabUrl = null;
@@ -193,17 +189,7 @@ els.logoutBtn.addEventListener("click", async () => {
 });
 els.send.addEventListener("click", sendOffer);
 
-els.toggleSettings.addEventListener("click", () => els.settings.classList.toggle("hidden"));
-els.saveSettings.addEventListener("click", async () => {
-  const value = els.platformUrl.value.trim();
-  await chrome.storage.sync.set({ platformUrl: value });
-  setStatus("URL plateforme enregistrée.", "ok");
-  els.settings.classList.add("hidden");
-});
-
 (async function init() {
-  const { platformUrl } = await chrome.storage.sync.get("platformUrl");
-  if (platformUrl) els.platformUrl.value = platformUrl;
   await render();
   await loadActiveTab();
 })();

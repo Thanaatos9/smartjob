@@ -24,18 +24,13 @@ Les routes `/api/extension/login`, `/api/extension/refresh` et
 une **erreur 404**. Redéploie avant de tester en prod, ou pointe l'extension
 sur `http://localhost:3000` pendant le dev.
 
-## Configuration du domaine
+## Domaine (codé en dur)
 
-À renseigner à **deux endroits** :
+L'URL de la plateforme est **fixée dans le code**, rien à configurer dans le
+popup. Si tu changes un jour de domaine, modifie les **deux** endroits :
 
-1. **`manifest.json`** → `host_permissions` doit couvrir ton domaine
-   (`https://smartjob.samuelrilos.com/*` + `http://localhost:3000/*` en dev).
-2. **L'URL active** : bouton **⚙️ URL plateforme** dans le popup, ou
-   `DEFAULT_PLATFORM_URL` dans `config.js`.
-   > N'indique que le **domaine** (`https://smartjob.samuelrilos.com`), **sans**
-   > chemin type `/dashboard` — sinon les appels API partent vers
-   > `.../dashboard/api/...` et renvoient 404. (Le code ne garde que l'origine,
-   > mais autant le saisir correctement.)
+1. **`config.js`** → la constante `PLATFORM_URL`.
+2. **`manifest.json`** → `host_permissions` (doit couvrir le même domaine).
 
 ## Installation (mode développeur)
 
