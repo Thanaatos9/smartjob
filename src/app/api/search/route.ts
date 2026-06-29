@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
   try {
     // 3. Lance la recherche via n8n.
-    const result = await triggerJobSearch({ userId: user.id, keyword: trimmed });
+    const result = await triggerJobSearch({ userId: user.id, keyword: trimmed, searchId });
     const offers = result.offers ?? [];
 
     // 4. Rattache les offres retournées à cette recherche.

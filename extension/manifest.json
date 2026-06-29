@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Candidature — Envoyer l'offre",
+  "version": "1.0.0",
+  "description": "Envoie l'URL de l'offre de l'onglet courant vers la plateforme de candidature, en un clic.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Envoyer cette offre"
+  },
+  "permissions": ["tabs", "storage"],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://smartjob.samuelrilos.com/*"
+  ]
+}

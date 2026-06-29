@@ -61,6 +61,7 @@ export async function triggerLetterGeneration(payload: GenerateLetterPayload) {
 export type SearchPayload = {
   userId: string;
   keyword: string;
+  searchId: string;
 };
 
 export type SearchOfferResult = {
