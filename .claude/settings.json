@@ -7,7 +7,14 @@
       "Bash(node -e \"console.log\\(require\\('./node_modules/next/package.json'\\).version, require\\('./node_modules/react/package.json'\\).version\\)\")",
       "Bash(npx tsc *)",
       "Bash(curl -sI \"https://smartjob.samuelrilos.com/privacy\")",
-      "Bash(curl -sI \"https://smartjob.samuelrilos.com/privacy/\")"
+      "Bash(curl -sI \"https://smartjob.samuelrilos.com/privacy/\")",
+      "Bash(grep -oiE '\\(Failed to compile|Type error[^\\\\\\\\]*|Error:[^\\\\\\\\]{0,120}|ELIFECYCLE|Killed|heap out of memory|Module not found[^\\\\\\\\]*|react/no-unescaped|Cannot find|npm error[^\\\\\\\\]{0,80}|exit status 1\\)' C:/Users/edoua/.claude/projects/d--Projets-candidature/6b080d26-e7bf-4565-aaa4-1afe58c973f1/tool-results/mcp-hetzner-coolify-coolify_deployment_logs-1782765915564.txt)",
+      "Bash(grep -oP 'npm run build.{0,400}' C:/Users/edoua/.claude/projects/d--Projets-candidature/6b080d26-e7bf-4565-aaa4-1afe58c973f1/tool-results/mcp-hetzner-coolify-coolify_deployment_logs-1782765915564.txt)",
+      "Bash(node -e ' *)",
+      "Bash(node \"C:/Users/edoua/AppData/Local/Temp/claude/d--Projets-candidature/6b080d26-e7bf-4565-aaa4-1afe58c973f1/scratchpad/parselog.js\" \"C:/Users/edoua/.claude/projects/d--Projets-candidature/6b080d26-e7bf-4565-aaa4-1afe58c973f1/tool-results/mcp-hetzner-coolify-coolify_deployment_logs-1782765915564.txt\")",
+      "mcp__hetzner-coolify__coolify_list_servers",
+      "mcp__hetzner-coolify__coolify_server_resources",
+      "WebFetch(domain:smartjob.samuelrilos.com)"
     ],
     "additionalDirectories": [
       "D:\\Projets\\candidature\\src\\app\\offers"
