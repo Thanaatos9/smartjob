@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
 import { triggerOfferExtraction } from "@/lib/n8n/client";
+import { fetchOfferContent } from "@/lib/fetch-offer-text";
 
 // Endpoint dédié à l'extension Chrome : reçoit l'URL de l'offre depuis l'onglet
 // actif, lance la même extraction n8n que le dashboard, puis renvoie l'id de
@@ -51,6 +52,12 @@ export async function POST(request: Request) {
     .maybeSingle();
   const beforeTs = prev?.created_at ?? null;
 
+  // L'extension n'envoie que l'URL. On capture le contenu de la page côté
+  // serveur pour l'envoyer comme `text` : sans ça, n8n ne récupère que la
+  // coquille "Loading..." des sites rendus en JavaScript (VIE/VIA…) et l'offre
+  // ressort vide ("Inconnu"). Si la capture échoue, on envoie l'URL seule.
+  const content = await fetchOfferContent(url);
+
   let result: unknown;
   try {
     result = await triggerOfferExtraction({
@@ -60,6 +67,7 @@ export async function POST(request: Request) {
       phone: profile.phone ?? "",
       location: profile.location ?? "",
       url,
+      text: content?.text,
     });
   } catch (err) {
     return NextResponse.json(

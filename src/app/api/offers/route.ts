@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { triggerOfferExtraction } from "@/lib/n8n/client";
+import { fetchOfferContent } from "@/lib/fetch-offer-text";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -32,6 +33,16 @@ export async function POST(request: Request) {
     );
   }
 
+  // Si on n'a qu'une URL, on capture le contenu de la page côté serveur et on
+  // l'envoie comme `text`. Sinon n8n ne recevrait que la coquille "Loading..."
+  // des sites rendus en JavaScript (VIE/VIA…). En cas d'échec de capture, on
+  // retombe sur l'envoi de l'URL seule (ancien comportement).
+  let offerText: string | undefined = text;
+  if (url && !offerText) {
+    const content = await fetchOfferContent(url);
+    if (content?.text) offerText = content.text;
+  }
+
   try {
     const result = await triggerOfferExtraction({
       userId: user.id,
@@ -40,7 +51,7 @@ export async function POST(request: Request) {
       phone: profile.phone ?? "",
       location: profile.location ?? "",
       url,
-      text,
+      text: offerText,
     });
     return NextResponse.json(result);
   } catch (err) {
