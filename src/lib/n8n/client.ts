@@ -37,6 +37,7 @@ export type GenerateLetterPayload = {
   fullName?: string;
   phone?: string;
   location?: string;
+  language?: "fr" | "en";
 };
 
 export async function triggerLetterGeneration(payload: GenerateLetterPayload) {

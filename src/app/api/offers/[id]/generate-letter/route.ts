@@ -38,8 +38,12 @@ export async function POST(
     );
   }
 
+  const body = await request.json().catch(() => ({}));
+  const language = body?.language === "en" ? "en" : "fr";
+
   try {
     const result = await triggerLetterGeneration({
+      language,
       offerId: id,
       userId: user.id,
       cvText: profile.cv_text,

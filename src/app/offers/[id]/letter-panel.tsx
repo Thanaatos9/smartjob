@@ -47,8 +47,34 @@ export function LetterPanel({
   const [justSaved, setJustSaved] = useState(false);
   const [text, setText] = useState(letterText ?? "");
   const [savedText, setSavedText] = useState(letterText ?? "");
+  const [language, setLanguage] = useState<"fr" | "en">("fr");
 
   const isDirty = text !== savedText;
+
+  const languageToggle = (
+    <div
+      role="radiogroup"
+      aria-label="Langue de la lettre"
+      className="inline-flex items-center rounded-md border border-border p-0.5"
+    >
+      {(["fr", "en"] as const).map((lang) => (
+        <button
+          key={lang}
+          type="button"
+          role="radio"
+          aria-checked={language === lang}
+          onClick={() => setLanguage(lang)}
+          className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+            language === lang
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          {lang === "fr" ? "Français" : "English"}
+        </button>
+      ))}
+    </div>
+  );
 
   async function handleGenerate() {
     setPending(true);
@@ -56,6 +82,8 @@ export function LetterPanel({
 
     const res = await fetch(`/api/offers/${offerId}/generate-letter`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language }),
     });
     const data = await res.json();
     setPending(false);
@@ -138,14 +166,22 @@ export function LetterPanel({
       }
 
       // Date (droite)
-      const dateStr = new Intl.DateTimeFormat("fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }).format(new Date());
-      const cityDate = senderLocation
-        ? `${senderLocation}, le ${dateStr}`
-        : `Le ${dateStr}`;
+      const dateStr = new Intl.DateTimeFormat(
+        language === "en" ? "en-GB" : "fr-FR",
+        {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }
+      ).format(new Date());
+      const cityDate =
+        language === "en"
+          ? senderLocation
+            ? `${senderLocation}, ${dateStr}`
+            : dateStr
+          : senderLocation
+            ? `${senderLocation}, le ${dateStr}`
+            : `Le ${dateStr}`;
       doc.setFontSize(11);
       doc.text(cityDate, rightX, yRight, { align: "right" });
       yRight += lineHeight;
@@ -179,7 +215,10 @@ export function LetterPanel({
       // Objet (gras), au-dessus du corps.
       if (offerTitle) {
         doc.setFont("times", "bold");
-        const objet = `Objet : Candidature au poste de ${offerTitle}`;
+        const objet =
+          language === "en"
+            ? `Subject: Application for the position of ${offerTitle}`
+            : `Objet : Candidature au poste de ${offerTitle}`;
         const objetLines = doc.splitTextToSize(objet, maxWidth) as string[];
         for (const line of objetLines) {
           newPageIfNeeded();
@@ -221,6 +260,10 @@ export function LetterPanel({
             {error}
           </p>
         )}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-muted-foreground">Langue de la lettre</span>
+          {languageToggle}
+        </div>
         <Button onClick={handleGenerate} disabled={pending} className="w-full">
           {pending ? "Génération en cours..." : "Générer la lettre"}
         </Button>
@@ -270,6 +313,7 @@ export function LetterPanel({
         <Button onClick={handleDownload} variant="outline" size="sm">
           Télécharger en PDF
         </Button>
+        {languageToggle}
         <Button onClick={handleGenerate} disabled={pending} variant="ghost" size="sm">
           {pending ? "Régénération..." : "Régénérer"}
         </Button>
