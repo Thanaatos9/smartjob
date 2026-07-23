@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { Check } from "lucide-react";
 
+function formatPhoneIntl(phone?: string | null) {
+  if (!phone) return phone;
+  const cleaned = phone.replace(/[^\d+]/g, "");
+  if (cleaned.startsWith("+")) return cleaned.replace(/^(\+\d{2})/, "$1 ");
+  if (cleaned.startsWith("0")) return `+33 ${cleaned.slice(1)}`;
+  return phone;
+}
+
 function slugify(s: string) {
   return (
     s
@@ -158,7 +166,7 @@ export function LetterPanel({
       }
       doc.setFont("times", "normal");
       doc.setFontSize(11);
-      for (const info of [senderPhone, senderLocation]) {
+      for (const info of [formatPhoneIntl(senderPhone), senderLocation]) {
         if (info) {
           doc.text(info, marginX, yLeft);
           yLeft += lineHeight * 0.9;
