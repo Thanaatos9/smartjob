@@ -9,6 +9,7 @@ import { offerSource } from "@/lib/offer-source";
 import { matchScoreBadge } from "@/lib/offer-score";
 import { MarkAppliedButton } from "@/components/mark-applied-button";
 import { DeleteOfferButton } from "@/components/delete-offer-button";
+import { ScoreOfferButton } from "@/components/score-offer-button";
 import {
   ArrowLeft,
   Building2,
@@ -102,9 +103,13 @@ export default async function OfferDetailPage({
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold">Correspondance avec ton profil</h2>
-              <Badge variant={matchScoreBadge(offer.match_score).variant}>
-                {matchScoreBadge(offer.match_score).label}
-              </Badge>
+              {offer.match_score === null ? (
+                <ScoreOfferButton offerId={offer.id} />
+              ) : (
+                <Badge variant={matchScoreBadge(offer.match_score).variant}>
+                  {matchScoreBadge(offer.match_score).label}
+                </Badge>
+              )}
             </div>
             {offer.match_reason && (
               <p className="text-sm text-muted-foreground">{offer.match_reason}</p>

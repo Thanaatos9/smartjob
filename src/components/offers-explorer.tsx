@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { DeleteOfferButton } from "@/components/delete-offer-button";
+import { ScoreOfferButton } from "@/components/score-offer-button";
 import { statusLabel, statusVariant, STATUS_LABELS } from "@/lib/offer-status";
 import { offerSource } from "@/lib/offer-source";
 import { matchScoreBadge } from "@/lib/offer-score";
@@ -244,9 +245,24 @@ export function OffersExplorer({
                     {offer.title ?? "Sans titre"}
                   </h3>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Badge variant={matchScoreBadge(offer.match_score).variant}>
-                      {matchScoreBadge(offer.match_score).label}
-                    </Badge>
+                    {offer.match_score === null ? (
+                      <span className="pointer-events-auto">
+                        <ScoreOfferButton
+                          offerId={offer.id}
+                          onScored={(score) =>
+                            setList((l) =>
+                              l.map((o) =>
+                                o.id === offer.id ? { ...o, match_score: score } : o
+                              )
+                            )
+                          }
+                        />
+                      </span>
+                    ) : (
+                      <Badge variant={matchScoreBadge(offer.match_score).variant}>
+                        {matchScoreBadge(offer.match_score).label}
+                      </Badge>
+                    )}
                     <Badge variant={statusVariant(offer.status)}>
                       {statusLabel(offer.status)}
                     </Badge>
