@@ -61,6 +61,36 @@ export async function triggerLetterGeneration(payload: GenerateLetterPayload) {
   return res.json() as Promise<{ id: string; status: string; letterText: string }>;
 }
 
+export type ScoreOfferPayload = {
+  offerId: string;
+  userId: string;
+  cvText: string;
+  additionalSkills?: string;
+};
+
+export async function triggerOfferScoring(payload: ScoreOfferPayload) {
+  const webhookUrl = process.env.N8N_SCORE_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("N8N_SCORE_WEBHOOK_URL n'est pas configuré");
+  }
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Webhook n8n a échoué (${res.status})`);
+  }
+
+  return res.json() as Promise<{
+    offerId: string;
+    match_score: number;
+    match_reason: string;
+  }>;
+}
+
 export type SearchPayload = {
   userId: string;
   keyword: string;

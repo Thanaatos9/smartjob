@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { scoreOffer } from "@/lib/scoring";
+import { triggerOfferScoring } from "@/lib/n8n/client";
 
 export async function POST(
   _request: Request,
@@ -27,7 +27,7 @@ export async function POST(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("cv_text")
+    .select("cv_text, additional_skills")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -38,24 +38,21 @@ export async function POST(
     );
   }
 
-  await scoreOffer(user.id, id);
-
-  const { data: scored } = await supabase
-    .from("offers")
-    .select("match_score, match_reason")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (scored?.match_score === null || scored?.match_score === undefined) {
+  try {
+    const result = await triggerOfferScoring({
+      offerId: id,
+      userId: user.id,
+      cvText: profile.cv_text,
+      additionalSkills: profile.additional_skills ?? "",
+    });
+    return NextResponse.json({
+      match_score: result.match_score,
+      match_reason: result.match_reason,
+    });
+  } catch (err) {
     return NextResponse.json(
-      { error: "Impossible de calculer la note pour cette offre" },
+      { error: err instanceof Error ? err.message : "Erreur inconnue" },
       { status: 502 }
     );
   }
-
-  return NextResponse.json({
-    match_score: scored.match_score,
-    match_reason: scored.match_reason,
-  });
 }
