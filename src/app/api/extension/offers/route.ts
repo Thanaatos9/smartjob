@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
 import { triggerOfferExtraction } from "@/lib/n8n/client";
+import { scoreOffer } from "@/lib/scoring";
 
 // Endpoint dédié à l'extension Chrome : reçoit l'URL de l'offre depuis l'onglet
 // actif, lance la même extraction n8n que le dashboard, puis renvoie l'id de
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("cv_text, full_name, phone, location")
+    .select("cv_text, full_name, phone, location, additional_skills")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       fullName: profile.full_name ?? "",
       phone: profile.phone ?? "",
       location: profile.location ?? "",
+      additionalSkills: profile.additional_skills ?? "",
       url,
     });
   } catch (err) {
@@ -102,6 +104,8 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   }
+
+  await scoreOffer(user.id, offerId);
 
   return NextResponse.json({ id: offerId });
 }

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusSelect } from "@/components/status-select";
 import { offerSource } from "@/lib/offer-source";
+import { matchScoreBadge } from "@/lib/offer-score";
 import { MarkAppliedButton } from "@/components/mark-applied-button";
 import { DeleteOfferButton } from "@/components/delete-offer-button";
 import {
@@ -98,6 +99,18 @@ export default async function OfferDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">Correspondance avec ton profil</h2>
+              <Badge variant={matchScoreBadge(offer.match_score).variant}>
+                {matchScoreBadge(offer.match_score).label}
+              </Badge>
+            </div>
+            {offer.match_reason && (
+              <p className="text-sm text-muted-foreground">{offer.match_reason}</p>
+            )}
+          </Card>
+
           <Card className="p-5">
             <dl className="grid grid-cols-2 gap-4 text-sm">
               {meta.map((m) => (

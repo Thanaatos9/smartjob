@@ -4,6 +4,7 @@ export type OfferWebhookPayload = {
   fullName?: string;
   phone?: string;
   location?: string;
+  additionalSkills?: string;
   url?: string;
   text?: string;
 };
@@ -37,6 +38,7 @@ export type GenerateLetterPayload = {
   fullName?: string;
   phone?: string;
   location?: string;
+  additionalSkills?: string;
   language?: "fr" | "en";
 };
 

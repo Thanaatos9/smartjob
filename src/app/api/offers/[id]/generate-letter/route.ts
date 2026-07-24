@@ -27,7 +27,7 @@ export async function POST(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("cv_text, full_name, phone, location")
+    .select("cv_text, full_name, phone, location, additional_skills")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -50,6 +50,7 @@ export async function POST(
       fullName: profile.full_name ?? "",
       phone: profile.phone ?? "",
       location: profile.location ?? "",
+      additionalSkills: profile.additional_skills ?? "",
     });
     return NextResponse.json(result);
   } catch (err) {

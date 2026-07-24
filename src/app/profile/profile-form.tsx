@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { updateProfile } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 
 type Profile = {
   full_name: string | null;
@@ -11,6 +11,7 @@ type Profile = {
   location: string | null;
   cv_text: string | null;
   cv_pdf_path: string | null;
+  additional_skills: string | null;
 } | null;
 
 export function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
@@ -82,6 +83,23 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
         />
         <p id="cv-hint" className="mt-1.5 text-xs text-muted-foreground">
           Format PDF, 10 Mo maximum. Le texte est extrait automatiquement.
+        </p>
+      </div>
+      <div>
+        <label htmlFor="additionalSkills" className="mb-1.5 block text-sm font-medium">
+          Qualités et compétences supplémentaires
+        </label>
+        <Textarea
+          id="additionalSkills"
+          name="additionalSkills"
+          rows={5}
+          placeholder="Ex : anglais courant, gestion de projet, autonomie, esprit d'équipe, certifications, soft skills..."
+          defaultValue={profile?.additional_skills ?? ""}
+          aria-describedby="additional-skills-hint"
+        />
+        <p id="additional-skills-hint" className="mt-1.5 text-xs text-muted-foreground">
+          Ce que ton CV ne dit pas encore : utilisé pour enrichir la note de correspondance
+          et tes lettres de motivation.
         </p>
       </div>
       <div aria-live="polite">

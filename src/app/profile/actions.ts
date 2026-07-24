@@ -19,6 +19,7 @@ export async function updateProfile(_prevState: unknown, formData: FormData) {
     full_name: formData.get("fullName") as string,
     phone: formData.get("phone") as string,
     location: formData.get("location") as string,
+    additional_skills: formData.get("additionalSkills") as string,
     updated_at: new Date().toISOString(),
   };
 
