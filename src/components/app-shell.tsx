@@ -4,16 +4,18 @@ export function AppShell({
   title,
   subtitle,
   actions,
+  userName,
   children,
 }: {
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  userName?: string | null;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
-      <Sidebar />
+      <Sidebar userName={userName} />
       <main className="flex-1 px-4 py-6 md:px-8 md:py-10">
         <div className="mx-auto max-w-5xl">
           <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

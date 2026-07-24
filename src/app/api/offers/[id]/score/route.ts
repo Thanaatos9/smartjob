@@ -14,22 +14,18 @@ export async function POST(
     return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   }
 
-  const { data: offer } = await supabase
-    .from("offers")
-    .select("id")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: offer }, { data: profile }] = await Promise.all([
+    supabase.from("offers").select("id").eq("id", id).eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("cv_text, additional_skills")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (!offer) {
     return NextResponse.json({ error: "Offre introuvable" }, { status: 404 });
   }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("cv_text, additional_skills")
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   if (!profile?.cv_text) {
     return NextResponse.json(

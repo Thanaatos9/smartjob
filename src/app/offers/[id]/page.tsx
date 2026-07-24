@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { userDisplayName } from "@/lib/user-display";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ export default async function OfferDetailPage({
   return (
     <AppShell
       title={offer.title ?? "Offre"}
+      userName={userDisplayName(user)}
       actions={
         <StatusSelect key={offer.status} offerId={offer.id} status={offer.status} />
       }

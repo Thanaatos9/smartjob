@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -25,3 +26,11 @@ export async function createClient() {
     }
   );
 }
+
+// auth.getUser() fait un aller-retour réseau vers Supabase Auth à chaque appel.
+// cache() déduplique les appels multiples dans une même requête (page + layout, etc.).
+export const getUser = cache(async () => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});

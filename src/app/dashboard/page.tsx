@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { userDisplayName } from "@/lib/user-display";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { OffersExplorer, type ExplorerOffer } from "@/components/offers-explorer";
@@ -43,7 +44,7 @@ export default async function DashboardPage({
   const searchOptions = (searchRows ?? []).filter((s) => usedSearchIds.has(s.id));
 
   return (
-    <AppShell title="Mes offres" subtitle="Suis tes candidatures et génère tes lettres.">
+    <AppShell title="Mes offres" subtitle="Suis tes candidatures et génère tes lettres." userName={userDisplayName(user)}>
       <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />

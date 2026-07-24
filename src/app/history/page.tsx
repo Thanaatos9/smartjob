@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { userDisplayName } from "@/lib/user-display";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ export default async function HistoryPage() {
     <AppShell
       title="Historique des recherches"
       subtitle="Retrouve, filtre et relance toutes tes recherches passées."
+      userName={userDisplayName(user)}
     >
       {searches.length === 0 ? (
         <Card className="p-10 text-center">

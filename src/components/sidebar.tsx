@@ -16,11 +16,14 @@ const LINKS = [
   { href: "/profile", label: "Profil", icon: UserRound },
 ];
 
-export function Sidebar() {
+export function Sidebar({ userName }: { userName?: string | null }) {
   const pathname = usePathname();
-  const [name, setName] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(userName ?? null);
 
   useEffect(() => {
+    // Le nom est déjà résolu côté serveur sur la plupart des pages ; on ne
+    // refait l'appel réseau ici que si aucune valeur n'a été fournie.
+    if (userName !== undefined) return;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       const user = data.user;
@@ -31,7 +34,7 @@ export function Sidebar() {
         null;
       setName(fullName);
     });
-  }, []);
+  }, [userName]);
 
   const initial = (name ?? "?").charAt(0).toUpperCase();
 
