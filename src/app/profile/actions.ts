@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 // au chargement (lit un PDF de test) qui plante en environnement bundlé (ENOENT).
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import { createClient } from "@/lib/supabase/server";
+import { triggerPortfolioFetch } from "@/lib/n8n/client";
 
 export async function updateProfile(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
@@ -20,6 +21,7 @@ export async function updateProfile(_prevState: unknown, formData: FormData) {
     phone: formData.get("phone") as string,
     location: formData.get("location") as string,
     additional_skills: formData.get("additionalSkills") as string,
+    portfolio_url: formData.get("portfolioUrl") as string,
     updated_at: new Date().toISOString(),
   };
 
@@ -53,6 +55,43 @@ export async function updateProfile(_prevState: unknown, formData: FormData) {
   }
 
   const { error } = await supabase.from("profiles").upsert(profileUpdate);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
+export async function fetchPortfolio(_prevState: unknown, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Non connecté" };
+  }
+
+  const portfolioUrl = formData.get("portfolioUrl") as string;
+  if (!portfolioUrl) {
+    return { error: "Renseigne d'abord l'URL de ton portfolio" };
+  }
+
+  let text: string;
+  try {
+    const result = await triggerPortfolioFetch({ userId: user.id, portfolioUrl });
+    text = result.text;
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erreur inconnue" };
+  }
+
+  const { error } = await supabase.from("profiles").upsert({
+    user_id: user.id,
+    portfolio_url: portfolioUrl,
+    portfolio_text: text,
+    portfolio_fetched_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
 
   if (error) {
     return { error: error.message };

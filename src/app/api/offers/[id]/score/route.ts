@@ -18,7 +18,7 @@ export async function POST(
     supabase.from("offers").select("id").eq("id", id).eq("user_id", user.id).maybeSingle(),
     supabase
       .from("profiles")
-      .select("cv_text, additional_skills")
+      .select("cv_text, additional_skills, portfolio_text")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -40,6 +40,7 @@ export async function POST(
       userId: user.id,
       cvText: profile.cv_text,
       additionalSkills: profile.additional_skills ?? "",
+      portfolioText: profile.portfolio_text ?? "",
     });
     return NextResponse.json({
       match_score: result.match_score,

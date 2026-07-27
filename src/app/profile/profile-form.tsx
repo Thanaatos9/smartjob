@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { updateProfile } from "./actions";
+import { updateProfile, fetchPortfolio } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 
@@ -12,10 +12,17 @@ type Profile = {
   cv_text: string | null;
   cv_pdf_path: string | null;
   additional_skills: string | null;
+  portfolio_url: string | null;
+  portfolio_text: string | null;
+  portfolio_fetched_at: string | null;
 } | null;
 
 export function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
   const [state, formAction, pending] = useActionState(updateProfile, null);
+  const [portfolioState, portfolioAction, portfolioPending] = useActionState(
+    fetchPortfolio,
+    null
+  );
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -101,6 +108,48 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
           Ce que ton CV ne dit pas encore : utilisé pour enrichir la note de correspondance
           et tes lettres de motivation.
         </p>
+      </div>
+      <div>
+        <label htmlFor="portfolioUrl" className="mb-1.5 block text-sm font-medium">
+          Portfolio (URL)
+        </label>
+        <Input
+          id="portfolioUrl"
+          name="portfolioUrl"
+          type="url"
+          autoComplete="url"
+          placeholder="https://mon-portfolio.com"
+          defaultValue={profile?.portfolio_url ?? ""}
+          aria-describedby="portfolio-hint"
+        />
+        <p id="portfolio-hint" className="mt-1.5 text-xs text-muted-foreground">
+          {profile?.portfolio_fetched_at
+            ? `Dernière synchronisation : ${new Date(profile.portfolio_fetched_at).toLocaleString("fr-FR")}`
+            : "Pas encore synchronisé."}{" "}
+          Le contenu est récupéré une seule fois puis mis en cache, pour ne pas
+          re-scraper le site à chaque lettre ou scoring.
+        </p>
+        <div aria-live="polite">
+          {portfolioState?.error && (
+            <p role="alert" className="mt-1.5 text-sm text-destructive">
+              {portfolioState.error}
+            </p>
+          )}
+          {portfolioState?.success && (
+            <p className="mt-1.5 text-sm font-medium text-success">
+              Portfolio synchronisé.
+            </p>
+          )}
+        </div>
+        <Button
+          type="submit"
+          formAction={portfolioAction}
+          disabled={portfolioPending}
+          variant="secondary"
+          className="mt-2"
+        >
+          {portfolioPending ? "Téléchargement..." : "Télécharger le portfolio"}
+        </Button>
       </div>
       <div aria-live="polite">
         {state?.error && (

@@ -31,6 +31,30 @@ export async function triggerOfferExtraction(payload: OfferWebhookPayload) {
   return res.json();
 }
 
+export type PortfolioFetchPayload = {
+  userId: string;
+  portfolioUrl: string;
+};
+
+export async function triggerPortfolioFetch(payload: PortfolioFetchPayload) {
+  const webhookUrl = process.env.N8N_PORTFOLIO_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("N8N_PORTFOLIO_WEBHOOK_URL n'est pas configuré");
+  }
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Webhook n8n a échoué (${res.status})`);
+  }
+
+  return res.json() as Promise<{ text: string }>;
+}
+
 export type GenerateLetterPayload = {
   offerId: string;
   userId: string;
@@ -39,6 +63,7 @@ export type GenerateLetterPayload = {
   phone?: string;
   location?: string;
   additionalSkills?: string;
+  portfolioText?: string;
   language?: "fr" | "en";
 };
 
@@ -66,6 +91,7 @@ export type ScoreOfferPayload = {
   userId: string;
   cvText: string;
   additionalSkills?: string;
+  portfolioText?: string;
 };
 
 export async function triggerOfferScoring(payload: ScoreOfferPayload) {
