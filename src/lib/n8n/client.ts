@@ -9,6 +9,20 @@ export type OfferWebhookPayload = {
   text?: string;
 };
 
+// Le workflow renvoie un message explicite sur ses erreurs métier (422 quand
+// l'offre est illisible) : on le remonte tel quel plutôt qu'un code HTTP nu.
+async function webhookError(res: Response) {
+  const raw = await res.text().catch(() => "");
+  let message = "";
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.error === "string") message = parsed.error;
+  } catch {
+    // corps non-JSON : on garde le message générique
+  }
+  return new Error(message || `Webhook n8n a échoué (${res.status})`);
+}
+
 export async function triggerOfferExtraction(payload: OfferWebhookPayload) {
   const webhookUrl = process.env.N8N_OFFER_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -25,7 +39,7 @@ export async function triggerOfferExtraction(payload: OfferWebhookPayload) {
   });
 
   if (!res.ok) {
-    throw new Error(`Webhook n8n a échoué (${res.status})`);
+    throw await webhookError(res);
   }
 
   return res.json();

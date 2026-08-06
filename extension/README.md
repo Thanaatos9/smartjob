@@ -7,10 +7,19 @@ puis propose un lien direct vers la fiche de l'offre créée.
 
 1. Tu **connectes ton compte** dans l'extension (email + mot de passe de la
    plateforme). L'extension stocke un token et le réutilise ensuite.
-2. Sur une page d'offre (LinkedIn, WTTJ, VIE…), tu cliques sur l'icône → **« Envoyer le lien »**.
-3. L'extension appelle `POST /api/extension/offers` avec ton token. Le serveur
-   lance l'extraction n8n (même flux que « Ajouter une offre » du dashboard).
+2. Sur une page d'offre (LinkedIn, WTTJ, VIE…), tu cliques sur l'icône → **« Envoyer l'offre »**.
+3. L'extension lit le texte affiché dans l'onglet (permission `scripting`, zone
+   de contenu principale) et appelle `POST /api/extension/offers` avec ton token
+   + ce texte. Le serveur lance l'extraction n8n (même flux que « Ajouter une
+   offre » du dashboard).
 4. Une fois l'offre créée, **« Voir l'offre → »** ouvre sa fiche `/offers/{id}`.
+
+Envoyer le texte de la page, et pas seulement l'URL, est ce qui permet de
+traiter les offres que le serveur ne peut pas récupérer lui-même : **offres
+reçues par mail** (Gmail exige une session, et l'id du message vit dans le
+fragment `#…` qui n'est jamais transmis au serveur), sites en SPA, pages
+derrière une connexion. Si la lecture échoue (page `chrome://`, lecteur PDF),
+seule l'URL part et n8n tente la récupération de son côté.
 
 L'auth est **par token** : tu te connectes une fois dans l'extension, pas besoin
 d'être connecté sur le site dans le navigateur. Le token est rafraîchi
@@ -45,5 +54,8 @@ popup. Si tu changes un jour de domaine, modifie les **deux** endroits :
   en trop. Voir les sections ci-dessus.
 - **Identifiants invalides** : mauvais email/mot de passe de la plateforme.
 - **« Renseigne d'abord ton CV »** : l'extraction a besoin du CV de ton profil.
+- **« Contenu de l'offre illisible » (422)** : ni le texte lu dans l'onglet ni la
+  page récupérée par n8n ne contenaient d'offre exploitable. Ouvre bien l'offre
+  (mail déplié, page de l'annonce affichée) avant de cliquer, puis réessaie.
 - **« Impossible de joindre la plateforme »** : vérifie l'URL (⚙️) et que le
   domaine est dans `host_permissions`.

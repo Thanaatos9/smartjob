@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const LAST_UPDATED = "29 juin 2026";
+const LAST_UPDATED = "6 août 2026";
 const CONTACT_EMAIL = "samuel.urls@gmail.com";
 
 export default function PrivacyPage() {
@@ -47,9 +47,12 @@ export default function PrivacyPage() {
               vos candidatures et lettres de motivation.
             </li>
             <li>
-              <strong>Offres d&apos;emploi&nbsp;:</strong> les URL des offres que
-              vous envoyez et le contenu public de ces pages, analysé pour en
-              extraire les informations (intitulé, entreprise, lieu, etc.).
+              <strong>Offres d&apos;emploi&nbsp;:</strong> l&apos;URL de la page que
+              vous envoyez ainsi que le texte qui y est affiché au moment où vous
+              cliquez, analysés pour en extraire les informations de l&apos;offre
+              (intitulé, entreprise, lieu, etc.). Si vous envoyez une offre reçue
+              par e-mail, le texte de ce message fait donc partie de ce qui est
+              transmis. Rien n&apos;est lu ni envoyé sans ce clic.
             </li>
           </ul>
         </section>
@@ -67,10 +70,23 @@ export default function PrivacyPage() {
               <strong>
                 <code>activeTab</code>
               </strong>{" "}
-              — lit l&apos;URL de l&apos;onglet actif{" "}
+              — donne accès à l&apos;onglet actif{" "}
               <em>uniquement lorsque vous cliquez sur l&apos;icône</em> de
-              l&apos;extension, afin de l&apos;envoyer à la plateforme. Aucune autre
-              page n&apos;est lue, et aucune navigation n&apos;est suivie.
+              l&apos;extension, et à cet onglet-là seulement. L&apos;accès retombe
+              ensuite. Aucune autre page n&apos;est lue, et aucune navigation
+              n&apos;est suivie.
+            </li>
+            <li>
+              <strong>
+                <code>scripting</code>
+              </strong>{" "}
+              — permet, à ce moment précis, de lire le texte affiché dans
+              l&apos;onglet pour l&apos;envoyer avec l&apos;URL. C&apos;est
+              indispensable pour les offres que nos serveurs ne peuvent pas
+              récupérer seuls&nbsp;: annonces reçues par e-mail, sites nécessitant
+              une connexion, pages dont le contenu est chargé dynamiquement. Ce
+              texte est envoyé à SmartJob, analysé pour en extraire l&apos;offre, et
+              rattaché à votre compte.
             </li>
             <li>
               <strong>

@@ -4,8 +4,11 @@ import { triggerOfferExtraction } from "@/lib/n8n/client";
 import { scoreOffer } from "@/lib/scoring";
 
 // Endpoint dédié à l'extension Chrome : reçoit l'URL de l'offre depuis l'onglet
-// actif, lance la même extraction n8n que le dashboard, puis renvoie l'id de
-// l'offre créée pour que l'extension propose un lien direct vers sa fiche.
+// actif — accompagnée du texte lu dans la page quand l'extension a pu le
+// capturer, seul moyen d'atteindre les pages que n8n ne peut pas récupérer
+// (webmails, SPA, pages derrière une session) — lance la même extraction n8n
+// que le dashboard, puis renvoie l'id de l'offre créée pour que l'extension
+// propose un lien direct vers sa fiche.
 
 export async function POST(request: Request) {
   const { supabase, user } = await supabaseFromRequest(request);
@@ -17,7 +20,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { url?: string };
+  let body: { url?: string; text?: string };
   try {
     body = await request.json();
   } catch {
@@ -25,7 +28,8 @@ export async function POST(request: Request) {
   }
 
   const url = body.url?.trim();
-  if (!url) {
+  const text = body.text?.trim();
+  if (!url && !text) {
     return NextResponse.json({ error: "URL de l'offre manquante" }, { status: 400 });
   }
 
@@ -62,6 +66,7 @@ export async function POST(request: Request) {
       location: profile.location ?? "",
       additionalSkills: profile.additional_skills ?? "",
       url,
+      text,
     });
   } catch (err) {
     return NextResponse.json(

@@ -12,6 +12,7 @@ const els = {
 };
 
 let currentTabUrl = null;
+let currentTabId = null;
 
 function setStatus(text, kind = "info") {
   els.status.textContent = text;
@@ -95,11 +96,49 @@ async function render() {
 async function loadActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTabUrl = tab?.url ?? null;
+  currentTabId = tab?.id ?? null;
   if (currentTabUrl && /^https?:/i.test(currentTabUrl)) {
     els.url.textContent = currentTabUrl;
   } else {
     els.url.textContent = "Onglet sans URL valide.";
     els.send.disabled = true;
+  }
+}
+
+// ---- Lecture du contenu de l'onglet --------------------------------------
+
+// Injecté dans la page : doit être autonome (pas de closure sur le popup).
+// On privilégie la zone de contenu principale pour éviter menus et barres
+// latérales — sur Gmail, [role="main"] contient le fil de discussion ouvert.
+function grabPageText() {
+  const root =
+    document.querySelector('[role="main"]') ||
+    document.querySelector("main") ||
+    document.querySelector("article") ||
+    document.body;
+  const text = (root && root.innerText) || document.body.innerText || "";
+  return text
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 12000);
+}
+
+// Beaucoup de pages ne sont pas récupérables côté serveur : webmails (le
+// contenu est derrière la session, et l'id du message vit dans le fragment
+// "#..." jamais envoyé au serveur), SPA, pages protégées. Lire le DOM de
+// l'onglet règle tous ces cas d'un coup. Échec possible sur chrome://, le
+// Web Store ou le lecteur PDF : on retombe alors sur l'envoi de l'URL seule.
+async function readActiveTabText() {
+  if (currentTabId == null) return "";
+  try {
+    const [res] = await chrome.scripting.executeScript({
+      target: { tabId: currentTabId },
+      func: grabPageText,
+    });
+    return typeof res?.result === "string" ? res.result : "";
+  } catch {
+    return "";
   }
 }
 
@@ -156,11 +195,13 @@ async function sendOffer() {
     return;
   }
 
+  const text = await readActiveTabText();
+
   const post = (t) =>
     fetch(`${base}/api/extension/offers`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
-      body: JSON.stringify({ url: currentTabUrl }),
+      body: JSON.stringify({ url: currentTabUrl, text }),
     });
 
   try {

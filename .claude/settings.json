@@ -14,7 +14,11 @@
       "Bash(node \"C:/Users/edoua/AppData/Local/Temp/claude/d--Projets-candidature/6b080d26-e7bf-4565-aaa4-1afe58c973f1/scratchpad/parselog.js\" \"C:/Users/edoua/.claude/projects/d--Projets-candidature/6b080d26-e7bf-4565-aaa4-1afe58c973f1/tool-results/mcp-hetzner-coolify-coolify_deployment_logs-1782765915564.txt\")",
       "mcp__hetzner-coolify__coolify_list_servers",
       "mcp__hetzner-coolify__coolify_server_resources",
-      "WebFetch(domain:smartjob.samuelrilos.com)"
+      "WebFetch(domain:smartjob.samuelrilos.com)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json)",
+      "PowerShell(npx eslint src/lib/n8n/client.ts src/app/api/extension/offers/route.ts)",
+      "PowerShell(Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead\\(\"d:\\\\Projets\\\\candidature\\\\extension.zip\"\\); $z.Entries | ForEach-Object { $_.FullName }; $z.Dispose\\(\\))",
+      "PowerShell($src=\"d:\\\\Projets\\\\candidature\\\\extension\"; $dst=\"d:\\\\Projets\\\\candidature\\\\extension.zip\"; if \\(Test-Path $dst\\) { Remove-Item $dst -Force }; $items = Get-ChildItem -Path $src -Exclude \"README.md\"; Compress-Archive -Path $items.FullName -DestinationPath $dst; Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[System.IO.Compression.ZipFile]::OpenRead\\($dst\\); $z.Entries | ForEach-Object { $_.FullName }; $z.Dispose\\(\\))"
     ],
     "additionalDirectories": [
       "D:\\Projets\\candidature\\src\\app\\offers"
