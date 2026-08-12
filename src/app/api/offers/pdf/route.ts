@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { triggerOfferExtraction } from "@/lib/n8n/client";
+import { triggerOfferPdfExtraction } from "@/lib/n8n/client";
 import { latestOfferTimestamp, resolveCreatedOfferId } from "@/lib/offer-creation";
 import { scoreOffer } from "@/lib/scoring";
+
+// Le PDF transite en base64 vers n8n : compter ~33% d'inflation par rapport au
+// fichier brut, à garder sous la limite de payload du webhook n8n.
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -12,12 +16,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   }
 
-  const { url, text } = await request.json();
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
+  }
 
-  if (!url && !text) {
+  const file = formData.get("pdf");
+
+  if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json(
-      { error: "Fournis une URL ou un texte d'offre" },
+      { error: "Sélectionne un fichier PDF contenant l'offre" },
       { status: 400 }
+    );
+  }
+
+  // Certains navigateurs n'envoient pas de type MIME : on retombe sur l'extension.
+  const looksPdf =
+    file.type === "application/pdf" || /\.pdf$/i.test(file.name ?? "");
+  if (!looksPdf) {
+    return NextResponse.json(
+      { error: "Le fichier doit être un PDF" },
+      { status: 400 }
+    );
+  }
+
+  if (file.size > MAX_PDF_BYTES) {
+    return NextResponse.json(
+      { error: "Le PDF ne doit pas dépasser 10 Mo" },
+      { status: 413 }
     );
   }
 
@@ -34,19 +62,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const pdfBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
   const beforeTs = await latestOfferTimestamp(supabase, user.id);
 
   let result: unknown;
   try {
-    result = await triggerOfferExtraction({
+    result = await triggerOfferPdfExtraction({
       userId: user.id,
       cvText: profile.cv_text,
       fullName: profile.full_name ?? "",
       phone: profile.phone ?? "",
       location: profile.location ?? "",
       additionalSkills: profile.additional_skills ?? "",
-      url,
-      text,
+      pdfBase64,
+      filename: file.name || "offre.pdf",
     });
   } catch (err) {
     return NextResponse.json(

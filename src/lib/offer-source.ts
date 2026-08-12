@@ -39,6 +39,15 @@ export function offerSource(input: {
   url?: string | null;
   domain?: string | null;
 }): OfferSource | null {
+  // Offre importée depuis un PDF : pas d'URL d'origine, le workflow n8n pose
+  // le marqueur "pdf" dans domain.
+  if ((input.domain ?? "").trim().toLowerCase() === "pdf") {
+    return {
+      label: "PDF",
+      className: "border-transparent bg-rose-500/15 text-rose-700 dark:text-rose-300",
+    };
+  }
+
   const haystack = `${input.domain ?? ""} ${input.url ?? ""}`;
   if (!haystack.trim()) return null;
 

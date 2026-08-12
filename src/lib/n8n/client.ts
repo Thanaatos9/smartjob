@@ -45,6 +45,42 @@ export async function triggerOfferExtraction(payload: OfferWebhookPayload) {
   return res.json();
 }
 
+export type OfferPdfWebhookPayload = {
+  userId: string;
+  cvText: string;
+  fullName?: string;
+  phone?: string;
+  location?: string;
+  additionalSkills?: string;
+  /** PDF encodé en base64 (sans préfixe data:). */
+  pdfBase64: string;
+  filename: string;
+};
+
+// Même contrat que triggerOfferExtraction : le workflow PDF écrit l'offre dans
+// Supabase et renvoie la ligne créée (ou un 422 si le PDF est illisible).
+export async function triggerOfferPdfExtraction(payload: OfferPdfWebhookPayload) {
+  const webhookUrl = process.env.N8N_OFFER_PDF_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("N8N_OFFER_PDF_WEBHOOK_URL n'est pas configuré");
+  }
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Webhook-Secret": process.env.N8N_WEBHOOK_SECRET ?? "",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw await webhookError(res);
+  }
+
+  return res.json();
+}
+
 export type PortfolioFetchPayload = {
   userId: string;
   portfolioUrl: string;
