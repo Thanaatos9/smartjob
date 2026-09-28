@@ -25,6 +25,8 @@
     .job { font-size: 12px; color: #525252; }
     .job b { color: #0a0a0a; }
     .counters { font-size: 12px; color: #525252; }
+    .lang { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #525252; }
+    .lang select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; color: #0a0a0a; }
     .row { display: flex; gap: 6px; flex-wrap: wrap; }
     button.btn { font: inherit; font-weight: 600; font-size: 12px; padding: 7px 12px; border-radius: 8px; cursor: pointer; border: 1px solid #e5e5e5; background: #fff; color: #0a0a0a; }
     button.btn:hover { background: #f5f5f5; }
@@ -49,6 +51,13 @@
         <div class="status" id="status" aria-live="polite">Prêt.</div>
         <div class="job hidden" id="job"></div>
         <div class="counters" id="counters"></div>
+        <label class="lang">Langue du CV et de la lettre
+          <select id="lang" aria-label="Langue du CV et de la lettre de motivation">
+            <option value="auto">Auto (langue de l'offre)</option>
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+          </select>
+        </label>
         <div class="row">
           <button class="btn primary" id="start">Démarrer</button>
           <button class="btn hidden" id="pause">Pause</button>
@@ -89,6 +98,7 @@
       for (const name of ["start", "pause", "resume", "stop", "continue", "skip"]) {
         $(name).addEventListener("click", () => handlers[name] && handlers[name]());
       }
+      $("lang").addEventListener("change", () => handlers.language && handlers.language($("lang").value));
       if (!controls) {
         show("start", false);
         show("close", true);
@@ -104,6 +114,16 @@
 
     on(name, fn) {
       handlers[name] = fn;
+    },
+
+    // 'auto' | 'fr' | 'en'
+    setLanguage(value) {
+      if (Panel.mounted()) $("lang").value = value;
+    },
+
+    // Sans sélecteur (bouton « Remplir ce formulaire » : la langue se règle dans le popup).
+    hideLanguage() {
+      if (Panel.mounted()) $("lang").closest(".lang").classList.add("hidden");
     },
 
     setMode(mode) {
@@ -142,7 +162,7 @@
       el.className = `status ${kind === "info" ? "" : kind}`;
     },
 
-    job(title, company, score) {
+    job(title, company, score, note) {
       if (!Panel.mounted()) return;
       const el = $("job");
       if (!title) {
@@ -154,7 +174,7 @@
       const b = document.createElement("b");
       b.textContent = title;
       el.append(b);
-      const rest = [company, score != null ? `score ${score}/10` : null].filter(Boolean).join(" · ");
+      const rest = [company, score != null ? `score ${score}/10` : null, note].filter(Boolean).join(" · ");
       if (rest) el.append(document.createTextNode(` — ${rest}`));
     },
 

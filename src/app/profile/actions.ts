@@ -7,6 +7,41 @@ import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import { createClient } from "@/lib/supabase/server";
 import { triggerPortfolioFetch } from "@/lib/n8n/client";
 
+const MAX_CV_BYTES = 10 * 1024 * 1024;
+
+// Lit un CV déposé (PDF), en extrait le texte et le range dans le stockage.
+async function storeCv(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  file: File,
+  storagePath: string
+): Promise<{ error: string } | { text: string; path: string }> {
+  if (file.type !== "application/pdf") {
+    return { error: "Le CV doit être un fichier PDF" };
+  }
+  if (file.size > MAX_CV_BYTES) {
+    return { error: "Le CV dépasse 10 Mo" };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  let text: string;
+  try {
+    const result = await pdfParse(buffer);
+    text = result.text;
+  } catch {
+    return { error: "Impossible de lire le contenu du PDF" };
+  }
+
+  const { error } = await supabase.storage
+    .from("cvs")
+    .upload(storagePath, buffer, { contentType: "application/pdf", upsert: true });
+
+  if (error) {
+    return { error: error.message };
+  }
+  return { text, path: storagePath };
+}
+
 export async function updateProfile(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -25,33 +60,22 @@ export async function updateProfile(_prevState: unknown, formData: FormData) {
     updated_at: new Date().toISOString(),
   };
 
+  // Un CV par langue : le principal (français) et l'anglais. Chaque dépôt
+  // remplace le précédent de sa langue, sans toucher à l'autre.
   const cvFile = formData.get("cvFile") as File | null;
   if (cvFile && cvFile.size > 0) {
-    if (cvFile.type !== "application/pdf") {
-      return { error: "Le CV doit être un fichier PDF" };
-    }
+    const stored = await storeCv(supabase, cvFile, `${user.id}/cv.pdf`);
+    if ("error" in stored) return { error: `CV français : ${stored.error}` };
+    profileUpdate.cv_text = stored.text;
+    profileUpdate.cv_pdf_path = stored.path;
+  }
 
-    const buffer = Buffer.from(await cvFile.arrayBuffer());
-
-    let cvText: string;
-    try {
-      const result = await pdfParse(buffer);
-      cvText = result.text;
-    } catch {
-      return { error: "Impossible de lire le contenu du PDF" };
-    }
-
-    const cvPath = `${user.id}/cv.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from("cvs")
-      .upload(cvPath, buffer, { contentType: "application/pdf", upsert: true });
-
-    if (uploadError) {
-      return { error: uploadError.message };
-    }
-
-    profileUpdate.cv_text = cvText;
-    profileUpdate.cv_pdf_path = cvPath;
+  const cvFileEn = formData.get("cvFileEn") as File | null;
+  if (cvFileEn && cvFileEn.size > 0) {
+    const stored = await storeCv(supabase, cvFileEn, `${user.id}/cv-en.pdf`);
+    if ("error" in stored) return { error: `CV anglais : ${stored.error}` };
+    profileUpdate.cv_text_en = stored.text;
+    profileUpdate.cv_pdf_path_en = stored.path;
   }
 
   const { error } = await supabase.from("profiles").upsert(profileUpdate);

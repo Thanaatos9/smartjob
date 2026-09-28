@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
+import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
 
 // Renvoie le PDF du CV de l'utilisateur pour que l'extension l'attache aux
-// champs « CV » des formulaires (upload de fichier).
+// champs « CV » des formulaires (upload de fichier). `?lang=fr|en` choisit la
+// langue ; sans CV dans cette langue, on renvoie l'autre plutôt que rien.
 export async function GET(request: Request) {
   const { supabase, user } = await supabaseFromRequest(request);
 
@@ -13,13 +15,17 @@ export async function GET(request: Request) {
     );
   }
 
+  const language = parseLanguage(new URL(request.url).searchParams.get("lang"));
+
+  // "*" : tolère un déploiement qui précède la migration du CV anglais.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, cv_pdf_path")
+    .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!profile?.cv_pdf_path) {
+  const cv = profile ? pickCv(profile, language, "pdf") : null;
+  if (!profile || !cv?.pdfPath) {
     return NextResponse.json(
       { error: "Aucun CV PDF dans ton profil" },
       { status: 404 }
@@ -28,7 +34,7 @@ export async function GET(request: Request) {
 
   const { data: blob, error } = await supabase.storage
     .from("cvs")
-    .download(profile.cv_pdf_path);
+    .download(cv.pdfPath);
 
   if (error || !blob) {
     return NextResponse.json(
@@ -38,12 +44,14 @@ export async function GET(request: Request) {
   }
 
   const base = (profile.full_name ?? "").trim().replace(/[^\p{L}\p{N} _-]/gu, "");
-  const filename = `CV${base ? ` - ${base}` : ""}.pdf`;
+  const prefix = cv.language === "en" ? "Resume" : "CV";
+  const filename = `${prefix}${base ? ` - ${base}` : ""}.pdf`;
 
   return new Response(await blob.arrayBuffer(), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "X-Cv-Language": cv.language,
       "Cache-Control": "private, no-store",
     },
   });

@@ -120,6 +120,52 @@
 
   C.api = (method, path, body) => C.send({ type: "api", method, path, body });
 
+  // ---- Langue du CV et de la lettre --------------------------------------
+  //
+  // Préférence de l'utilisateur : 'auto' (langue détectée dans l'offre), 'fr' ou 'en'.
+  // Stockée dans chrome.storage.local : le panneau et le popup la partagent.
+
+  C.LANG_KEY = "cvLang";
+
+  C.getLangPref = async () => {
+    try {
+      const stored = (await chrome.storage.local.get(C.LANG_KEY))[C.LANG_KEY];
+      return stored === "fr" || stored === "en" ? stored : "auto";
+    } catch {
+      return "auto";
+    }
+  };
+
+  C.setLangPref = async (value) => {
+    try {
+      await chrome.storage.local.set({ [C.LANG_KEY]: value });
+    } catch {
+      // contexte d'extension invalidé : la préférence sera redemandée
+    }
+  };
+
+  // Mots très fréquents et peu ambigus dans chaque langue. Simple et sans
+  // dépendance : suffisant pour une annonce, qui fait des centaines de mots.
+  const FR_WORDS = new Set(
+    "le la les des du une et pour vous nous avec dans est sont votre notre au aux cette qui que sur par ou ses vos leur sera serez".split(" ")
+  );
+  const EN_WORDS = new Set(
+    "the and of to you we with for our your will is are this that who have an or as be from their about".split(" ")
+  );
+
+  // 'fr' | 'en'. Sans signal (texte vide ou très court), français : c'est la
+  // langue du CV principal.
+  C.detectLanguage = (text) => {
+    const words = C.norm(String(text || "").slice(0, 5000)).split(/[^a-z']+/);
+    let fr = 0;
+    let en = 0;
+    for (const w of words) {
+      if (FR_WORDS.has(w)) fr++;
+      if (EN_WORDS.has(w)) en++;
+    }
+    return en > fr ? "en" : "fr";
+  };
+
   C.text = (el, max = 12000) =>
     ((el && (el.innerText || el.textContent)) || "")
       .replace(/[ \t]+/g, " ")

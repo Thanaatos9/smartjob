@@ -44,7 +44,9 @@ async function handle(message, sender) {
     }
 
     case "cv": {
-      const { res, status, error } = await apiRequest("/api/extension/apply/cv");
+      // Seules 'fr' et 'en' sont acceptées : la valeur finit dans une URL.
+      const lang = message.lang === "en" ? "en" : "fr";
+      const { res, status, error } = await apiRequest(`/api/extension/apply/cv?lang=${lang}`);
       if (!res) return { status, error };
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

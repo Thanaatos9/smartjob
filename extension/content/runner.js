@@ -161,9 +161,12 @@
       prefs: config.preferences,
       offerId: job.offerId,
       context: job.title,
+      language: job.language || "fr",
       resumeSelected: () => A.resumeSelected(A.root()),
     };
   }
+
+  const CV_LABEL = { fr: "CV français", en: "CV anglais" };
 
   // Après un clic sur Envoyer : 'ok' (confirmation vue), 'gone' (le formulaire a
   // disparu, envoi très probable) ou null (formulaire toujours là : refus).
@@ -361,6 +364,10 @@
     const job = { ...card, ...info, el: undefined };
     Panel.job(job.title, job.company);
 
+    // Langue du CV et de la lettre : imposée par l'utilisateur, ou celle de l'offre.
+    const langPref = await C.getLangPref();
+    job.language = langPref === "auto" ? C.detectLanguage(info.text) : langPref;
+
     // Les offres qu'on ne peut pas postuler d'ici ne coûtent ni score ni IA.
     const button = A.applyButton();
     if (button.kind === "applied") return { job, status: "skipped", reason: "déjà postulé sur le site" };
@@ -378,11 +385,21 @@
         company: job.company,
         location: job.location,
         text: job.text,
+        language: job.language,
       })
     );
     job.offerId = prepared.offerId;
     job.score = prepared.score;
-    Panel.job(job.title, job.company, prepared.score);
+    // CV réellement retenu : l'autre langue si celle demandée n'est pas enregistrée.
+    job.cvLanguage = prepared.cvLanguage || job.language;
+    Panel.job(job.title, job.company, prepared.score, CV_LABEL[job.cvLanguage]);
+    if (job.cvLanguage !== job.language && !run.warnedCv) {
+      run.warnedCv = true;
+      log(
+        `${CV_LABEL[job.language]} non enregistré : ${CV_LABEL[job.cvLanguage]} utilisé. Ajoute-le sur la page Profil du site.`,
+        "warn"
+      );
+    }
     if (config) config.usage.remaining = prepared.remaining;
 
     if (prepared.decision === "skip") {
@@ -638,6 +655,16 @@
   });
   Panel.on("continue", () => pendingUser && pendingUser("continue"));
   Panel.on("skip", () => pendingUser && pendingUser("skip"));
+  Panel.on("language", (value) => C.setLangPref(value)); // lue au début de chaque offre
+
+  // Le popup partage la même préférence : le panneau la suit.
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === "local" && changes[C.LANG_KEY]) Panel.setLanguage(changes[C.LANG_KEY].newValue || "auto");
+    });
+  } catch {
+    // contexte d'extension invalidé
+  }
 
   // ---- Panneau et reprise -------------------------------------------------
 
@@ -656,6 +683,7 @@
 
   function mountPanel() {
     Panel.mount();
+    C.getLangPref().then((value) => Panel.setLanguage(value));
     const running = Boolean(run && run.status === "running" && isMine());
     Panel.setState(running ? "running" : "idle");
     if (run && isMine()) refreshPanel();

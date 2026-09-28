@@ -7,6 +7,7 @@
 
   Panel.unmount();
   Panel.mount({ title: "Remplir ce formulaire", controls: false });
+  Panel.hideLanguage(); // la langue se règle dans le popup
   Panel.status("Lecture du formulaire…");
 
   const loaded = await Filler.loadConfig();
@@ -28,11 +29,16 @@
     return;
   }
 
+  // Langue du CV et de la lettre : choix du popup, sinon celle de la page.
+  const langPref = await C.getLangPref();
+  const language = langPref === "auto" ? C.detectLanguage(document.body.innerText) : langPref;
+
   try {
     const result = await Filler.fillRoot(root, {
       profile,
       prefs: preferences,
       context: document.title,
+      language,
     });
 
     if (result.error) {
@@ -45,7 +51,10 @@
       );
       for (const f of result.unresolved) Panel.log(`À compléter : ${f.label || f.name || "champ sans libellé"}`, "warn");
     } else {
-      Panel.status(`${result.filled} champ(s) rempli(s). Vérifie puis envoie toi-même.`, "ok");
+      Panel.status(
+        `${result.filled} champ(s) rempli(s) (${language === "en" ? "CV anglais" : "CV français"}). Vérifie puis envoie toi-même.`,
+        "ok"
+      );
     }
   } catch (err) {
     Panel.status(`Erreur : ${err && err.message ? err.message : err}`, "error");

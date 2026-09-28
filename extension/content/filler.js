@@ -20,17 +20,18 @@
     return { config: data };
   };
 
-  let cvFile; // undefined : pas encore chargé ; null : indisponible
-  Filler.getCv = async () => {
-    if (cvFile !== undefined) return cvFile;
-    const res = await C.send({ type: "cv" });
+  // Un CV par langue, mis en cache pour la durée du run.
+  const cvFiles = {}; // langue → File | null (indisponible) ; absent : pas encore chargé
+  Filler.getCv = async (language = "fr") => {
+    if (language in cvFiles) return cvFiles[language];
+    const res = await C.send({ type: "cv", lang: language });
     if (!res || res.error || !res.base64) {
-      cvFile = null;
+      cvFiles[language] = null;
       return null;
     }
     const bytes = Uint8Array.from(atob(res.base64), (c) => c.charCodeAt(0));
-    cvFile = new File([bytes], res.filename || "CV.pdf", { type: "application/pdf" });
-    return cvFile;
+    cvFiles[language] = new File([bytes], res.filename || "CV.pdf", { type: "application/pdf" });
+    return cvFiles[language];
   };
 
   // ---- Identité -----------------------------------------------------------
@@ -120,7 +121,7 @@
     const isCv = CV_LABEL.test(t) || (!NOT_CV.test(t) && (f.accept.includes("pdf") || t.trim() === ""));
     if (!isCv) return f.required ? "unresolved" : "skipped";
     if (ctx.resumeSelected && ctx.resumeSelected()) return "skipped"; // le site a déjà un CV sélectionné
-    const file = await Filler.getCv();
+    const file = await Filler.getCv(ctx.language);
     if (!file) return f.required ? "unresolved" : "skipped";
     return Fields.setFile(f, file) ? "filled" : "unresolved";
   }
@@ -128,7 +129,8 @@
   // ---- Remplissage d'une étape -------------------------------------------
 
   /**
-   * ctx : { profile, prefs, offerId, context, resumeSelected?() }
+   * ctx : { profile, prefs, offerId, context, language, resumeSelected?() }
+   *   language : 'fr' | 'en', langue du CV téléversé et de la lettre rédigée.
    * Renvoie { filled, asked, unresolved: [champ obligatoire resté sans réponse] }.
    */
   Filler.fillRoot = async (root, ctx) => {
@@ -203,6 +205,7 @@
       const { status, data } = await C.api("POST", "/api/extension/apply/answers", {
         offerId: ctx.offerId || undefined,
         context: ctx.context || undefined,
+        language: ctx.language,
         questions,
       });
 

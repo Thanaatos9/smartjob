@@ -6,7 +6,8 @@ import { scoreOffer } from "@/lib/scoring";
 // Endpoint dédié à l'extension Chrome : reçoit l'URL de l'offre depuis l'onglet
 // actif — accompagnée du texte lu dans la page quand l'extension a pu le
 // capturer, seul moyen d'atteindre les pages que n8n ne peut pas récupérer
-// (webmails, SPA, pages derrière une session) — lance la même extraction n8n
+// (SPA, pages derrière une session). Un texte vide est volontaire : n8n va alors
+// lire l'URL lui-même (page de l'offre d'un site d'entreprise). Lance la même extraction n8n
 // que le dashboard, puis renvoie l'id de l'offre créée pour que l'extension
 // propose un lien direct vers sa fiche.
 

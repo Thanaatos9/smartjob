@@ -11,6 +11,7 @@ type Profile = {
   location: string | null;
   cv_text: string | null;
   cv_pdf_path: string | null;
+  cv_pdf_path_en?: string | null;
   additional_skills: string | null;
   portfolio_url: string | null;
   portfolio_text: string | null;
@@ -74,7 +75,7 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
       </div>
       <div>
         <label htmlFor="cvFile" className="mb-1.5 block text-sm font-medium">
-          CV (PDF)
+          CV français (PDF)
         </label>
         {profile?.cv_pdf_path && (
           <p className="mb-2 text-sm text-muted-foreground">
@@ -89,7 +90,30 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
           aria-describedby="cv-hint"
         />
         <p id="cv-hint" className="mt-1.5 text-xs text-muted-foreground">
-          Format PDF, 10 Mo maximum. Le texte est extrait automatiquement.
+          Format PDF, 10 Mo maximum. Le texte est extrait automatiquement. Ce CV sert
+          par défaut, et pour les offres en français.
+        </p>
+      </div>
+      <div>
+        <label htmlFor="cvFileEn" className="mb-1.5 block text-sm font-medium">
+          CV anglais (PDF)
+        </label>
+        <p className="mb-2 text-sm text-muted-foreground">
+          {profile?.cv_pdf_path_en
+            ? `CV actuel : ${profile.cv_pdf_path_en.split("/").pop()}`
+            : "Aucun CV anglais enregistré."}
+        </p>
+        <Input
+          id="cvFileEn"
+          type="file"
+          name="cvFileEn"
+          accept="application/pdf"
+          aria-describedby="cv-en-hint"
+        />
+        <p id="cv-en-hint" className="mt-1.5 text-xs text-muted-foreground">
+          Utilisé pour les lettres en anglais et par l&apos;extension quand l&apos;offre est en
+          anglais. Déposer un nouveau fichier remplace le précédent ; sans CV anglais, le CV
+          français est utilisé.
         </p>
       </div>
       <div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
 import { countSubmittedLast24h, loadPreferences } from "@/lib/auto-apply/preferences";
+import { availableCvLanguages, pickCv } from "@/lib/auto-apply/cv";
 
 // Contexte dont l'extension a besoin pour remplir les formulaires : identité,
 // préférences et quota restant. Récupéré une fois au démarrage d'un run.
@@ -22,11 +23,8 @@ export async function GET(request: Request) {
   }
 
   const [{ data: profile }, preferences, used] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("full_name, phone, location, cv_text, cv_pdf_path, portfolio_url")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+    // "*" : tolère un déploiement qui précède la migration du CV anglais.
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     loadPreferences(supabase, user.id),
     countSubmittedLast24h(supabase, user.id),
   ]);
@@ -41,8 +39,10 @@ export async function GET(request: Request) {
       phone: profile?.phone?.trim() ?? "",
       location: profile?.location?.trim() ?? "",
       portfolioUrl: profile?.portfolio_url?.trim() ?? "",
-      hasCv: Boolean(profile?.cv_text),
-      hasCvPdf: Boolean(profile?.cv_pdf_path),
+      hasCv: Boolean(profile && pickCv(profile, "fr", "text")),
+      hasCvPdf: Boolean(profile && pickCv(profile, "fr", "pdf")),
+      // Langues pour lesquelles un CV existe réellement (sans repli).
+      cvLanguages: profile ? availableCvLanguages(profile) : [],
     },
     preferences,
     usage: {

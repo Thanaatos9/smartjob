@@ -7,6 +7,7 @@ import {
   loadPreferences,
 } from "@/lib/auto-apply/preferences";
 import { findOrCreateOffer, parseJob, str } from "@/lib/auto-apply/offers";
+import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
 
 // Étape « faut-il postuler à cette offre ? » de la candidature automatique.
 // L'extension envoie ce qu'elle lit dans la page ; le serveur enregistre
@@ -48,8 +49,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Offre invalide" }, { status: 400 });
   }
 
+  // Langue de l'offre, déterminée par l'extension (ou imposée par l'utilisateur) :
+  // elle choisit le CV comparé à l'offre pour le score.
+  const language = parseLanguage(body.language);
+
   const [{ data: profile }, preferences, used, { data: previous }] = await Promise.all([
-    supabase.from("profiles").select("cv_text").eq("user_id", user.id).maybeSingle(),
+    // "*" : tolère un déploiement qui précède la migration du CV anglais.
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     loadPreferences(supabase, user.id),
     countSubmittedLast24h(supabase, user.id),
     supabase
@@ -61,7 +67,8 @@ export async function POST(request: Request) {
       .maybeSingle(),
   ]);
 
-  if (!profile?.cv_text) {
+  const cv = profile ? pickCv(profile, language, "text") : null;
+  if (!cv) {
     return NextResponse.json(
       { error: "Renseigne d'abord ton CV dans ton profil" },
       { status: 400 }
@@ -92,7 +99,7 @@ export async function POST(request: Request) {
   // Le score coûte un appel OpenAI : on ne le calcule que si l'offre n'a pas
   // déjà été écartée par une règle gratuite.
   if (!skip && score === null) {
-    await scoreOffer(user.id, offerId);
+    await scoreOffer(user.id, offerId, language);
     const { data: scored } = await supabase
       .from("offers")
       .select("match_score, match_reason")
@@ -134,5 +141,8 @@ export async function POST(request: Request) {
     decision: skip ? "skip" : "apply",
     skipReason: skip,
     remaining,
+    // CV réellement retenu : peut différer de `language` s'il manque (repli).
+    language,
+    cvLanguage: cv.language,
   });
 }

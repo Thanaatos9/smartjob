@@ -1,5 +1,6 @@
 import type { ApplyPreferences } from "@/lib/auto-apply/preferences";
 import type { FormQuestion } from "@/lib/auto-apply/questions";
+import type { CvLanguage } from "@/lib/auto-apply/cv";
 
 // Répond aux questions d'un formulaire de candidature à partir du CV et des
 // préférences du candidat. Renvoie null pour toute question sans réponse
@@ -19,7 +20,7 @@ const SYSTEM_PROMPT = [
   "- Questions sensibles ou démographiques (genre, origine, handicap, statut militaire, orientation, religion, âge…) : choisis l'option « je préfère ne pas répondre » si elle existe, sinon réponds null.",
   "- Autorisation de travail / visa / sponsoring : utilise UNIQUEMENT les préférences fournies, sinon null.",
   "- Prétentions salariales, préavis, disponibilité : utilise UNIQUEMENT les préférences fournies, sinon null.",
-  "- Lettre de motivation (textarea) : rédige au plus 200 mots, à la première personne, factuelle, dans la langue de l'offre, sans formule creuse, en t'appuyant sur des éléments réels du CV.",
+  "- Lettre de motivation (textarea) : rédige au plus 200 mots, à la première personne, factuelle, dans la « Langue de la lettre » indiquée ci-dessous (quelle que soit la langue de la question), sans formule creuse, en t'appuyant sur des éléments réels du CV.",
   "- Autres textarea : 2 à 4 phrases factuelles.",
   "- Réponds dans la langue de la question.",
   "",
@@ -31,7 +32,11 @@ export type AnswerContext = {
   additionalSkills?: string | null;
   preferences: ApplyPreferences;
   offer?: { title?: string | null; company?: string | null; text?: string | null } | null;
+  // Langue du CV fourni et de la lettre de motivation à rédiger.
+  language: CvLanguage;
 };
+
+const LETTER_LANGUAGE: Record<CvLanguage, string> = { fr: "français", en: "anglais (English)" };
 
 function preferencesBlock(p: ApplyPreferences) {
   const rows: [string, string][] = [
@@ -71,6 +76,7 @@ export async function answerFormQuestions(
     ctx.additionalSkills ? `\n### Compétences supplémentaires\n${ctx.additionalSkills}` : "",
     "\n### Préférences du candidat",
     preferencesBlock(ctx.preferences),
+    `\n### Langue de la lettre : ${LETTER_LANGUAGE[ctx.language]}`,
     offerText ? `\n### Offre visée\n${offerText}` : "",
     "\n### Questions du formulaire",
     JSON.stringify(

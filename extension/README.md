@@ -19,11 +19,20 @@ Deux fonctions :
 4. Une fois l'offre créée, **« Voir l'offre → »** ouvre sa fiche `/offers/{id}`.
 
 Envoyer le texte de la page, et pas seulement l'URL, est ce qui permet de
-traiter les offres que le serveur ne peut pas récupérer lui-même : **offres
-reçues par mail** (Gmail exige une session, et l'id du message vit dans le
-fragment `#…` qui n'est jamais transmis au serveur), sites en SPA, pages
-derrière une connexion. Si la lecture échoue (page `chrome://`, lecteur PDF),
-seule l'URL part et n8n tente la récupération de son côté.
+traiter les offres que le serveur ne peut pas récupérer lui-même : sites en
+SPA, pages derrière une connexion. Si la lecture échoue (page `chrome://`,
+lecteur PDF), seule l'URL part et n8n tente la récupération de son côté.
+
+**Pages de candidature (`/apply`, `/application`)** : sur Lever, Ashby, Workable,
+WTTJ… ces pages ne contiennent que le formulaire, sans la description du poste.
+L'extension envoie donc l'adresse de l'offre **sans `/apply`** (et sans les
+paramètres de suivi `utm_*`, `lever-*`…) et **sans le texte de la page**, pour que
+le serveur lise la vraie page de l'offre. Si le serveur n'y arrive pas, elle
+retente avec le texte de l'onglet. L'adresse envoyée est celle affichée dans le popup.
+
+**Boîtes mail** : envoyer un mail ne marche que s'il contient toute l'offre. Pour une
+alerte d'emploi (titre + lien), ouvre plutôt la page de l'offre et clique là. Le popup
+te le rappelle quand tu es sur Gmail, Outlook, Yahoo ou Proton.
 
 L'auth est **par token** : tu te connectes une fois dans l'extension, pas besoin
 d'être connecté sur le site dans le navigateur. Le token est rafraîchi
@@ -53,6 +62,31 @@ automatiquement ; s'il expire définitivement, l'extension redemande la connexio
    - le reste : banque de réponses, sinon IA à partir de ton CV et de tes réglages.
 5. **Semi-auto (défaut)** : s'arrête sur le bouton Envoyer, surligné en vert. Tu
    relis et tu cliques. **Auto** : l'extension envoie elle-même.
+
+### Langue du CV et de la lettre
+
+Tu peux enregistrer **deux CV** sur la page **Profil** du site : un CV français (par
+défaut) et un CV anglais. Chaque dépôt remplace le précédent de sa langue.
+
+Le sélecteur **« Langue du CV et de la lettre »**, dans le panneau et dans le popup,
+choisit quoi utiliser :
+
+- **Auto** (défaut) : la langue est détectée dans le texte de l'offre ;
+- **Français** ou **English** : tu l'imposes, quelle que soit la langue de l'offre.
+
+La langue choisie détermine :
+- le **PDF du CV** téléversé dans le formulaire (`CV - Nom.pdf` ou `Resume - Nom.pdf`) ;
+- le **CV comparé à l'offre** pour le score, et celui que lit l'IA pour répondre aux questions ;
+- la **langue de la lettre de motivation** quand le formulaire a un champ texte « lettre ».
+  Si tu as déjà rédigé la lettre de cette offre sur le site, c'est **cette lettre** qui est
+  collée telle quelle, sans en faire générer une autre.
+
+Si le CV de la langue demandée n'est pas enregistré, l'autre est utilisé et le journal du
+panneau le signale. Sur le site, le choix Français / English de la génération de lettre
+s'appuie aussi sur le CV de la langue correspondante.
+
+Limite actuelle : un champ « lettre de motivation » à **téléverser en fichier** n'est pas
+rempli (il est surligné). Seul le champ texte l'est.
 
 ### Garde-fous
 

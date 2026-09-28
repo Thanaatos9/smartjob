@@ -8,13 +8,15 @@ const els = {
   url: document.getElementById("url"),
   send: document.getElementById("send"),
   open: document.getElementById("open"),
+  lang: document.getElementById("lang"),
   fill: document.getElementById("fill"),
   prefs: document.getElementById("prefs"),
   status: document.getElementById("status"),
 };
 
-let currentTabUrl = null;
+let currentTabUrl = null; // URL réelle de l'onglet
 let currentTabId = null;
+let target = null; // { url, fromApplyPage } : ce qu'on enverra à la plateforme
 
 function setStatus(text, kind = "info") {
   els.status.textContent = text;
@@ -41,7 +43,14 @@ async function loadActiveTab() {
   currentTabUrl = tab?.url ?? null;
   currentTabId = tab?.id ?? null;
   if (currentTabUrl && /^https?:/i.test(currentTabUrl)) {
-    els.url.textContent = currentTabUrl;
+    target = canonicalOfferUrl(currentTabUrl);
+    els.url.textContent = target.url;
+    if (isWebmail(currentTabUrl)) {
+      setStatus(
+        "Tu es sur une boîte mail : ouvre plutôt la page de l'offre. Envoyer le mail ne marche que s'il contient toute l'offre.",
+        "info"
+      );
+    }
   } else {
     els.url.textContent = "Onglet sans URL valide.";
     els.send.disabled = true;
@@ -53,7 +62,7 @@ async function loadActiveTab() {
 
 // Injecté dans la page : doit être autonome (pas de closure sur le popup).
 // On privilégie la zone de contenu principale pour éviter menus et barres
-// latérales — sur Gmail, [role="main"] contient le fil de discussion ouvert.
+// latérales.
 function grabPageText() {
   const root =
     document.querySelector('[role="main"]') ||
@@ -68,11 +77,10 @@ function grabPageText() {
     .slice(0, 12000);
 }
 
-// Beaucoup de pages ne sont pas récupérables côté serveur : webmails (le
-// contenu est derrière la session, et l'id du message vit dans le fragment
-// "#..." jamais envoyé au serveur), SPA, pages protégées. Lire le DOM de
-// l'onglet règle tous ces cas d'un coup. Échec possible sur chrome://, le
-// Web Store ou le lecteur PDF : on retombe alors sur l'envoi de l'URL seule.
+// Beaucoup de pages ne sont pas récupérables côté serveur : SPA, pages
+// derrière une connexion. Lire le DOM de l'onglet règle ces cas d'un coup.
+// Échec possible sur chrome://, le Web Store ou le lecteur PDF : on retombe
+// alors sur l'envoi de l'URL seule.
 async function readActiveTabText() {
   if (currentTabId == null) return "";
   try {
@@ -131,7 +139,7 @@ async function sendOffer() {
   setStatus("Envoi et analyse en cours… (quelques secondes)", "info");
 
   const base = await getPlatformUrl();
-  const token = await getValidToken(base);
+  let token = await getValidToken(base);
   if (!token) {
     setStatus("Session expirée, reconnecte-toi.", "error");
     els.send.disabled = false;
@@ -139,22 +147,39 @@ async function sendOffer() {
     return;
   }
 
-  const text = await readActiveTabText();
-
-  const post = (t) =>
+  const post = (t, payload) =>
     fetch(`${base}/api/extension/offers`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
-      body: JSON.stringify({ url: currentTabUrl, text }),
+      body: JSON.stringify(payload),
     });
 
-  try {
-    let res = await post(token);
-
-    // Token rejeté : on tente un refresh + un seul retry avant d'abandonner.
+  // Token rejeté : on tente un refresh + un seul retry avant d'abandonner.
+  const send = async (payload) => {
+    let res = await post(token, payload);
     if (res.status === 401) {
       const fresh = await refreshToken(base);
-      if (fresh) res = await post(fresh);
+      if (fresh) {
+        token = fresh;
+        res = await post(token, payload);
+      }
+    }
+    return res;
+  };
+
+  try {
+    let res;
+    if (target.fromApplyPage) {
+      // Page « /apply » : elle ne contient que le formulaire. On envoie l'URL de
+      // l'offre SANS texte, pour que le serveur lise la description complète.
+      res = await send({ url: target.url, text: "" });
+      // Si le serveur n'arrive pas à la lire (page protégée…), on retente avec
+      // ce qu'affiche l'onglet : titre et entreprise au moins.
+      if (res.status === 422) {
+        res = await send({ url: currentTabUrl, text: await readActiveTabText() });
+      }
+    } else {
+      res = await send({ url: target.url, text: await readActiveTabText() });
     }
 
     const data = await res.json().catch(() => ({}));
@@ -218,6 +243,19 @@ els.fill.addEventListener("click", async () => {
   }
 });
 
+// Langue du CV et de la lettre : préférence partagée avec le panneau des sites
+// (auto = langue de l'offre).
+const LANG_KEY = "cvLang";
+
+async function loadLanguage() {
+  const stored = (await chrome.storage.local.get(LANG_KEY))[LANG_KEY];
+  els.lang.value = stored === "fr" || stored === "en" ? stored : "auto";
+}
+
+els.lang.addEventListener("change", () => {
+  chrome.storage.local.set({ [LANG_KEY]: els.lang.value });
+});
+
 els.prefs.addEventListener("click", () => {
   chrome.tabs.create({ url: `${getPlatformUrl()}/auto-apply` });
 });
@@ -225,4 +263,5 @@ els.prefs.addEventListener("click", () => {
 (async function init() {
   await render();
   await loadActiveTab();
+  await loadLanguage();
 })();

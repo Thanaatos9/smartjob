@@ -5,18 +5,23 @@ import { loadPreferences } from "@/lib/auto-apply/preferences";
 import {
   isCacheable,
   matchOption,
+  normalizeText,
   parseQuestions,
   questionKey,
   type FormQuestion,
 } from "@/lib/auto-apply/questions";
+import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
 
 // Répond aux questions d'une étape de formulaire. Ordre de résolution :
 //  1. la banque de réponses (réponses déjà données ou corrigées par l'utilisateur) ;
-//  2. l'IA, à partir du CV et des préférences.
+//  2. la lettre de motivation déjà rédigée sur le site pour cette offre ;
+//  3. l'IA, à partir du CV (dans la langue demandée) et des préférences.
 // Toute réponse qui ne colle pas aux options proposées est renvoyée à null :
 // l'extension laisse alors le champ à l'utilisateur.
 
-type Answer = { id: string; answer: string | null; source: "bank" | "ai" | null };
+type Answer = { id: string; answer: string | null; source: "bank" | "letter" | "ai" | null };
+
+const COVER_LETTER = /lettre|cover letter|motivation/;
 
 // Ramène une réponse brute à une valeur exploitable pour le type de champ.
 function coerce(question: FormQuestion, raw: string): string | null {
@@ -51,7 +56,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { offerId?: unknown; questions?: unknown; context?: unknown };
+  let body: { offerId?: unknown; questions?: unknown; context?: unknown; language?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -64,25 +69,25 @@ export async function POST(request: Request) {
   }
 
   const offerId = typeof body.offerId === "string" ? body.offerId : null;
+  const language = parseLanguage(body.language);
 
   const [{ data: profile }, preferences, offerResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("cv_text, additional_skills")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+    // "*" : tolère un déploiement qui précède la migration du CV anglais.
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     loadPreferences(supabase, user.id),
     offerId
       ? supabase
           .from("offers")
-          .select("title, company, raw_text, summary")
+          .select("title, company, raw_text, summary, cover_letter_text")
           .eq("id", offerId)
           .eq("user_id", user.id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
-  if (!profile?.cv_text) {
+  // Le CV de la langue demandée, sinon l'autre : voir pickCv.
+  const cv = profile ? pickCv(profile, language, "text") : null;
+  if (!profile || !cv?.text) {
     return NextResponse.json(
       { error: "Renseigne d'abord ton CV dans ton profil" },
       { status: 400 }
@@ -106,7 +111,18 @@ export async function POST(request: Request) {
     if (value !== null) results.set(q.id, { id: q.id, answer: value, source: "bank" });
   }
 
-  // 2. IA pour le reste.
+  // 2. Lettre de motivation déjà écrite (et relue) sur le site pour cette offre :
+  // on la colle telle quelle plutôt que d'en faire générer une autre.
+  const savedLetter = offerResult.data?.cover_letter_text?.trim();
+  if (savedLetter) {
+    for (const { q } of keyed) {
+      if (!results.has(q.id) && q.type === "textarea" && COVER_LETTER.test(normalizeText(q.label))) {
+        results.set(q.id, { id: q.id, answer: savedLetter, source: "letter" });
+      }
+    }
+  }
+
+  // 3. IA pour le reste.
   const pending = keyed.filter(({ q }) => !results.has(q.id));
   if (pending.length > 0) {
     // Pour une page hors offre (bouton « Remplir ce formulaire »), l'extension
@@ -125,10 +141,11 @@ export async function POST(request: Request) {
     try {
       generated = await answerFormQuestions(
         {
-          cvText: profile.cv_text,
+          cvText: cv.text,
           additionalSkills: profile.additional_skills,
           preferences,
           offer,
+          language,
         },
         pending.map((p) => p.q)
       );

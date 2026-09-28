@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { triggerLetterGeneration } from "@/lib/n8n/client";
+import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
 
 export async function POST(
   request: Request,
@@ -16,33 +17,32 @@ export async function POST(
 
   const [{ data: offer }, { data: profile }] = await Promise.all([
     supabase.from("offers").select("id").eq("id", id).eq("user_id", user.id).maybeSingle(),
-    supabase
-      .from("profiles")
-      .select("cv_text, full_name, phone, location, additional_skills, portfolio_text")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+    // "*" : tolère un déploiement qui précède la migration du CV anglais.
+    supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
   ]);
 
   if (!offer) {
     return NextResponse.json({ error: "Offre introuvable" }, { status: 404 });
   }
 
-  if (!profile?.cv_text) {
+  const body = await request.json().catch(() => ({}));
+  const language = parseLanguage(body?.language);
+
+  // La lettre anglaise s'appuie sur le CV anglais s'il existe.
+  const cv = profile ? pickCv(profile, language, "text") : null;
+  if (!profile || !cv?.text) {
     return NextResponse.json(
       { error: "Renseigne d'abord ton CV dans ton profil" },
       { status: 400 }
     );
   }
 
-  const body = await request.json().catch(() => ({}));
-  const language = body?.language === "en" ? "en" : "fr";
-
   try {
     const result = await triggerLetterGeneration({
       language,
       offerId: id,
       userId: user.id,
-      cvText: profile.cv_text,
+      cvText: cv.text,
       fullName: profile.full_name ?? "",
       phone: profile.phone ?? "",
       location: profile.location ?? "",
