@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, LayoutGrid, ClipboardList, History, UserRound, LogOut } from "lucide-react";
+import { Search, LayoutGrid, ClipboardList, History, UserRound, Zap, LogOut } from "lucide-react";
 import { logout } from "@/app/(auth)/actions";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/dashboard", label: "Mes offres", icon: LayoutGrid },
   { href: "/applications", label: "Candidatures", icon: ClipboardList },
   { href: "/history", label: "Historique", icon: History },
+  { href: "/auto-apply", label: "Auto-candidature", icon: Zap },
   { href: "/profile", label: "Profil", icon: UserRound },
 ];
 

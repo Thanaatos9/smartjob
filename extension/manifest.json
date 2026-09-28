@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Candidature — Envoyer l'offre",
-  "version": "1.1.0",
-  "description": "Envoie l'offre de l'onglet courant vers la plateforme de candidature, en un clic.",
+  "version": "1.2.0",
+  "description": "Envoie l'offre de l'onglet courant vers la plateforme de candidature et remplit les candidatures sur LinkedIn, Welcome to the Jungle et JobTeaser.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -17,6 +17,53 @@
       "128": "icons/icon128.png"
     }
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://smartjob.samuelrilos.com/*"]
+  "host_permissions": ["https://smartjob.samuelrilos.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": [
+        "config.js",
+        "content/util.js",
+        "content/fields.js",
+        "content/filler.js",
+        "content/panel.js",
+        "content/adapters/common.js",
+        "content/adapters/linkedin.js",
+        "content/runner.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.welcometothejungle.com/*"],
+      "js": [
+        "config.js",
+        "content/util.js",
+        "content/fields.js",
+        "content/filler.js",
+        "content/panel.js",
+        "content/adapters/common.js",
+        "content/adapters/wttj.js",
+        "content/runner.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.jobteaser.com/*"],
+      "js": [
+        "config.js",
+        "content/util.js",
+        "content/fields.js",
+        "content/filler.js",
+        "content/panel.js",
+        "content/adapters/common.js",
+        "content/adapters/jobteaser.js",
+        "content/runner.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

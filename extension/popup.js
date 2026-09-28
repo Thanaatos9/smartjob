@@ -8,6 +8,8 @@ const els = {
   url: document.getElementById("url"),
   send: document.getElementById("send"),
   open: document.getElementById("open"),
+  fill: document.getElementById("fill"),
+  prefs: document.getElementById("prefs"),
   status: document.getElementById("status"),
 };
 
@@ -17,65 +19,6 @@ let currentTabId = null;
 function setStatus(text, kind = "info") {
   els.status.textContent = text;
   els.status.className = `status ${kind}`;
-}
-
-// ---- Session (stockée dans chrome.storage.local) -------------------------
-
-async function getAuth() {
-  const { auth } = await chrome.storage.local.get("auth");
-  return auth || null;
-}
-
-async function setAuth(auth) {
-  await chrome.storage.local.set({ auth });
-}
-
-async function clearAuth() {
-  await chrome.storage.local.remove("auth");
-}
-
-// Rafraîchit la session. Renvoie le nouvel access_token, ou null.
-// IMPORTANT : on n'efface la session QUE sur un vrai rejet d'auth (401, refresh
-// token invalide). Un 404/500/erreur réseau (ex. backend pas déployé) NE doit
-// PAS déconnecter — sinon la session saute à chaque appel raté.
-async function refreshToken(base) {
-  const auth = await getAuth();
-  if (!auth?.refresh_token) return null;
-  try {
-    const res = await fetch(`${base}/api/extension/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: auth.refresh_token }),
-    });
-    if (res.status === 401) {
-      await clearAuth(); // le refresh token est réellement invalide
-      return null;
-    }
-    if (!res.ok) return null; // endpoint absent / erreur serveur : on garde la session
-    const data = await res.json();
-    await setAuth({ ...auth, ...data });
-    return data.access_token;
-  } catch {
-    return null; // hors-ligne : on garde la session
-  }
-}
-
-// Renvoie un access_token utilisable. Rafraîchit si expiré, mais conserve
-// l'ancien token si le refresh échoue pour une raison non-auth.
-async function getValidToken(base) {
-  const auth = await getAuth();
-  if (!auth?.access_token) return null;
-
-  const expiresMs = (auth.expires_at ?? 0) * 1000;
-  if (expiresMs && Date.now() < expiresMs - 60_000) return auth.access_token;
-
-  const refreshed = await refreshToken(base);
-  if (refreshed) return refreshed;
-
-  // Refresh raté : si la session a été effacée (401) → null, sinon on retente
-  // avec l'ancien token (le vrai appel donnera une erreur claire si besoin).
-  const still = await getAuth();
-  return still?.access_token ?? null;
 }
 
 // ---- Vues ----------------------------------------------------------------
@@ -102,6 +45,7 @@ async function loadActiveTab() {
   } else {
     els.url.textContent = "Onglet sans URL valide.";
     els.send.disabled = true;
+    els.fill.disabled = true;
   }
 }
 
@@ -250,6 +194,33 @@ els.logoutBtn.addEventListener("click", async () => {
   await render();
 });
 els.send.addEventListener("click", sendOffer);
+
+// Remplissage générique d'un formulaire de candidature de l'onglet courant
+// (sites d'entreprise, ATS…). activeTab suffit : aucune permission d'hôte en plus.
+const FILL_FILES = [
+  "config.js",
+  "content/util.js",
+  "content/fields.js",
+  "content/filler.js",
+  "content/panel.js",
+  "content/fill-page.js",
+];
+
+els.fill.addEventListener("click", async () => {
+  if (currentTabId == null) return;
+  els.fill.disabled = true;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: currentTabId }, files: FILL_FILES });
+    window.close();
+  } catch {
+    setStatus("Impossible de lire cette page (page protégée du navigateur).", "error");
+    els.fill.disabled = false;
+  }
+});
+
+els.prefs.addEventListener("click", () => {
+  chrome.tabs.create({ url: `${getPlatformUrl()}/auto-apply` });
+});
 
 (async function init() {
   await render();
