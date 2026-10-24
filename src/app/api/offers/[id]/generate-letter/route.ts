@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { triggerLetterGeneration } from "@/lib/n8n/client";
 import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
+import { loadPreferences } from "@/lib/auto-apply/preferences";
 
 export async function POST(
   request: Request,
@@ -15,10 +16,11 @@ export async function POST(
     return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   }
 
-  const [{ data: offer }, { data: profile }] = await Promise.all([
+  const [{ data: offer }, { data: profile }, preferences] = await Promise.all([
     supabase.from("offers").select("id").eq("id", id).eq("user_id", user.id).maybeSingle(),
     // "*" : tolère un déploiement qui précède la migration du CV anglais.
     supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    loadPreferences(supabase, user.id),
   ]);
 
   if (!offer) {
@@ -48,6 +50,7 @@ export async function POST(
       location: profile.location ?? "",
       additionalSkills: profile.additional_skills ?? "",
       portfolioText: profile.portfolio_text ?? "",
+      availability: preferences.availability,
     });
     return NextResponse.json(result);
   } catch (err) {

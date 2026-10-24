@@ -20,7 +20,7 @@ const SYSTEM_PROMPT = [
   "- Questions sensibles ou démographiques (genre, origine, handicap, statut militaire, orientation, religion, âge…) : choisis l'option « je préfère ne pas répondre » si elle existe, sinon réponds null.",
   "- Autorisation de travail / visa / sponsoring : utilise UNIQUEMENT les préférences fournies, sinon null.",
   "- Prétentions salariales, préavis, disponibilité : utilise UNIQUEMENT les préférences fournies, sinon null.",
-  "- Lettre de motivation (textarea) : rédige au plus 200 mots, à la première personne, factuelle, dans la « Langue de la lettre » indiquée ci-dessous (quelle que soit la langue de la question), sans formule creuse, en t'appuyant sur des éléments réels du CV.",
+  "- Lettre de motivation (textarea) : rédige au plus 200 mots, à la première personne, factuelle, dans la « Langue de la lettre » indiquée ci-dessous (quelle que soit la langue de la question), en t'appuyant sur des éléments réels du CV. Écris comme le candidat lui-même, sobre et concret : ouvre sur ce qui fait le cœur du poste puis relie-le à ton expérience, décris une expérience par ses tâches réelles (« Chez X, j'occupe le poste de Y. J'y ... ») et termine par une phrase de pont vers une mission précise de l'offre (« Ce sont les mêmes réflexes que ceux attendus pour ... »). Interdits : tirets cadratins (—), « passionné », « dynamique », « fort de », « valeur ajoutée », « véritable », « en adéquation », « par ailleurs », « en outre », « je suis convaincu », « non seulement... mais aussi », triplets d'adjectifs, éloges génériques de l'entreprise, phrase finale qui résume la lettre.",
   "- Autres textarea : 2 à 4 phrases factuelles.",
   "- Réponds dans la langue de la question.",
   "",

@@ -115,6 +115,8 @@ export type GenerateLetterPayload = {
   additionalSkills?: string;
   portfolioText?: string;
   language?: "fr" | "en";
+  /** Disponibilité saisie dans les préférences d'auto-candidature. */
+  availability?: string;
 };
 
 export async function triggerLetterGeneration(payload: GenerateLetterPayload) {
