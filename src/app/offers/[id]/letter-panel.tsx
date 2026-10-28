@@ -210,48 +210,57 @@ export function LetterPanel({
       }
 
       // Le corps démarre sous le plus bas des deux blocs.
-      let y = Math.max(yLeft, yRight, marginTop + lineHeight) + lineHeight * 2;
-      const newPageIfNeeded = () => {
-        if (y > pageHeight - marginBottom) {
-          doc.addPage();
-          y = marginTop;
+      const bodyTop = Math.max(yLeft, yRight, marginTop + lineHeight) + lineHeight * 2;
+      const bodyBottom = pageHeight - marginBottom;
+
+      const objet = offerTitle
+        ? language === "en"
+          ? `Subject: Application for the position of ${offerTitle}`
+          : `Objet : Candidature au poste de ${offerTitle}`
+        : null;
+      const paragraphs = text.trim().split("\n");
+
+      // Objet + corps à une taille donnée. Les lignes vides donnent un espace
+      // de paragraphe plus court qu'une ligne pleine.
+      const layoutBody = (fontSize: number) => {
+        const lh = (lineHeight * fontSize) / 12;
+        const items: { line: string; y: number; bold: boolean }[] = [];
+        let y = bodyTop;
+        doc.setFontSize(fontSize);
+        if (objet) {
+          doc.setFont("times", "bold");
+          for (const line of doc.splitTextToSize(objet, maxWidth) as string[]) {
+            items.push({ line, y, bold: true });
+            y += lh;
+          }
+          y += lh; // espace avant le corps
         }
+        doc.setFont("times", "normal");
+        for (const paragraph of paragraphs) {
+          if (paragraph.trim() === "") {
+            y += lh * 0.6;
+            continue;
+          }
+          for (const line of doc.splitTextToSize(paragraph, maxWidth) as string[]) {
+            items.push({ line, y, bold: false });
+            y += lh;
+          }
+        }
+        // y pointe sous la dernière ligne : on retire l'interligne en trop.
+        return { items, fontSize, bottom: y - lh };
       };
 
-      doc.setFontSize(12);
-
-      // Objet (gras), au-dessus du corps.
-      if (offerTitle) {
-        doc.setFont("times", "bold");
-        const objet =
-          language === "en"
-            ? `Subject: Application for the position of ${offerTitle}`
-            : `Objet : Candidature au poste de ${offerTitle}`;
-        const objetLines = doc.splitTextToSize(objet, maxWidth) as string[];
-        for (const line of objetLines) {
-          newPageIfNeeded();
-          doc.text(line, marginX, y);
-          y += lineHeight;
-        }
-        y += lineHeight; // espace avant le corps
+      // La lettre tient toujours sur une page : on réduit la taille du texte
+      // jusqu'à ce que le corps passe au-dessus de la marge basse.
+      let layout = layoutBody(12);
+      for (let size = 11.75; layout.bottom > bodyBottom && size >= 8; size -= 0.25) {
+        layout = layoutBody(size);
       }
 
-      doc.setFont("times", "normal");
-      doc.setFontSize(12);
-
-      // Une entrée par retour à la ligne ; les lignes vides créent un espace.
-      for (const paragraph of text.split("\n")) {
-        if (paragraph.trim() === "") {
-          y += lineHeight;
-          newPageIfNeeded();
-          continue;
-        }
-        const wrapped = doc.splitTextToSize(paragraph, maxWidth) as string[];
-        for (const line of wrapped) {
-          newPageIfNeeded();
-          doc.text(line, marginX, y);
-          y += lineHeight;
-        }
+      doc.setFontSize(layout.fontSize);
+      for (const { line, y, bold } of layout.items) {
+        doc.setFont("times", bold ? "bold" : "normal");
+        doc.text(line, marginX, y);
       }
 
       doc.save(`lettre-${slugify(fileBaseName ?? "candidature")}.pdf`);

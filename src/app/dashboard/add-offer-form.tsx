@@ -115,8 +115,8 @@ export function AddOfferForm() {
             required
           />
           <p className="text-xs text-muted-foreground">
-            Le PDF doit contenir du texte sélectionnable (10 Mo max). Les scans
-            d&apos;images ne sont pas lisibles.
+            10 Mo max. Les PDF scannés ou imprimés via « Microsoft Print to PDF »
+            sont lus par OCR, ce qui prend quelques secondes de plus.
           </p>
         </div>
       )}
