@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Upload } from "lucide-react";
+import { Download, Sparkles, Upload } from "lucide-react";
 
-// Candidature adaptée par le skill « postuler » : ciblage ATS, documents et relance.
-// Le dépôt manuel sert quand le skill n'a pas pu envoyer les PDF lui-même.
+// CV et lettre adaptés à l'offre : génération (ou régénération) dans l'app,
+// ciblage ATS, documents, relance, et dépôt manuel de PDF faits ailleurs.
 export function TailoredPanel({
   offerId,
   axis,
@@ -19,6 +19,7 @@ export function TailoredPanel({
   followUpSentAt,
   cvUrl,
   letterUrl,
+  fitScore,
 }: {
   offerId: string;
   axis: string | null;
@@ -30,10 +31,29 @@ export function TailoredPanel({
   followUpSentAt: string | null;
   cvUrl: string | null;
   letterUrl: string | null;
+  fitScore: number | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  async function generate() {
+    setGenerating(true);
+    setError(null);
+    const res = await fetch(`/api/offers/${offerId}/tailor`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ regenerate: !!cvUrl }),
+    });
+    setGenerating(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Échec de la génération");
+      return;
+    }
+    router.refresh();
+  }
 
   async function upload(form: HTMLFormElement) {
     setPending(true);
@@ -54,6 +74,18 @@ export function TailoredPanel({
 
   return (
     <div className="flex flex-col gap-3 text-sm">
+      <Button type="button" size="sm" onClick={generate} disabled={generating}>
+        <Sparkles className="size-4" aria-hidden />
+        {generating ? "Rédaction en cours (30 s environ)…" : cvUrl ? "Régénérer CV + lettre" : "Générer CV + lettre"}
+      </Button>
+
+      {fitScore !== null && (
+        <p className="text-muted-foreground">
+          <span className="font-medium text-foreground">Adéquation : </span>
+          {fitScore}/100{fitScore < 70 ? " (sous le seuil de 70 : en mode auto, l'extension ne postule pas)" : ""}
+        </p>
+      )}
+
       {(axis || coverage !== null) && (
         <dl className="grid grid-cols-2 gap-3">
           {axis && (
@@ -113,6 +145,7 @@ export function TailoredPanel({
           upload(e.currentTarget);
         }}
       >
+        <p className="text-xs text-muted-foreground">Ou dépose des PDF faits ailleurs :</p>
         <label className="text-xs font-medium text-muted-foreground">
           CV adapté (PDF)
           <input name="cv" type="file" accept="application/pdf" className="mt-1 block w-full text-xs" />

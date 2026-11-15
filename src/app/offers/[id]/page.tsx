@@ -209,6 +209,7 @@ export default async function OfferDetailPage({
               followUpSentAt={offer.follow_up_sent_at ?? null}
               cvUrl={cvUrl}
               letterUrl={letterUrl}
+              fitScore={offer.fit_score ?? null}
             />
           </Card>
           <Card className="p-5 lg:sticky lg:top-6">
