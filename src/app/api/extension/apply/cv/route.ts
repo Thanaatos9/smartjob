@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
 import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
+import { tailorOffer } from "@/lib/tailor";
 
 // Renvoie le PDF à attacher aux champs fichier des formulaires.
 //   ?lang=fr|en       langue du CV générique (repli sur l'autre langue)
-//   ?offerId=<uuid>   offre en cours : son CV adapté (skill « postuler ») passe
-//                     avant le CV générique du profil
+//   ?offerId=<uuid>   offre en cours : son CV adapté passe avant le CV générique
+//                     du profil (généré à la volée s'il n'existe pas encore et
+//                     que le profil CV structuré est renseigné)
 //   ?pageUrl=<url>    à défaut d'id (bouton « Remplir ce formulaire ») : l'offre
 //                     est retrouvée par son adresse, sans /apply ni paramètres
 //   ?kind=letter      la lettre adaptée de l'offre (404 s'il n'y en a pas)
@@ -56,9 +58,8 @@ export async function GET(request: Request) {
       .from("offers")
       .select("id, url, tailored_cv_path, tailored_letter_path")
       .eq("user_id", user.id)
-      .not("tailored_cv_path", "is", null)
       .order("updated_at", { ascending: false })
-      .limit(50);
+      .limit(200);
     offer = (data ?? []).find((o) => normalizeUrl(o.url) === pageUrl) ?? null;
   }
 
@@ -68,6 +69,15 @@ export async function GET(request: Request) {
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // Offre reconnue sans documents adaptés : on les génère maintenant. L'utilisateur
+  // remplit lui-même ce formulaire, donc pas de seuil d'adéquation ici.
+  if (offer && !(kind === "letter" ? offer.tailored_letter_path : offer.tailored_cv_path)) {
+    const made = await tailorOffer(supabase, user.id, offer.id, { force: true });
+    if (made.status === "ready") {
+      offer = { ...offer, tailored_cv_path: made.cvPath, tailored_letter_path: made.letterPath };
+    }
+  }
 
   const tailoredPath = kind === "letter" ? offer?.tailored_letter_path : offer?.tailored_cv_path;
   let path: string | null = tailoredPath ?? null;

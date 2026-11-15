@@ -27,6 +27,7 @@
     daily_limit: "plafond des 24 h atteint",
     low_score: "score trop bas",
     score_unavailable: "score indisponible",
+    low_fit: "profil peu adapté à l'offre (moins de 70/100)",
   };
 
   // Fin normale (plafond, plus d'offres) et arrêt sur erreur bloquante.
@@ -406,6 +407,24 @@
       if (prepared.skipReason === "daily_limit") throw new Finish("Plafond des 24 h atteint : c'est fini pour aujourd'hui.");
       // Le serveur a déjà journalisé cette décision.
       return { job, status: "skipped", reason: SKIP_TEXT[prepared.skipReason] || prepared.skipReason, serverRecorded: true };
+    }
+
+    // CV et lettre adaptés à l'offre, générés par le serveur s'ils n'existent pas
+    // encore. L'étape de dépôt du CV les utilisera à la place du CV du profil.
+    Panel.status("Création du CV et de la lettre adaptés…");
+    const tailored = await C.api("POST", "/api/extension/apply/tailor", {
+      offerId: job.offerId,
+      site: A.id,
+      jobKey: job.key,
+    });
+    if (tailored && !tailored.error) {
+      if (tailored.decision === "skip") {
+        return { job, status: "skipped", reason: SKIP_TEXT[tailored.skipReason] || tailored.skipReason, serverRecorded: true };
+      }
+      if (tailored.tailored) log(`CV adapté prêt${tailored.coverage != null ? ` (couverture ATS ${tailored.coverage} %)` : ""}.`);
+      else if (tailored.warning) log(tailored.warning, "warn");
+    } else {
+      log("CV adapté indisponible : CV du profil utilisé.", "warn");
     }
 
     return { job, ...(await applyFlow(job)) };
