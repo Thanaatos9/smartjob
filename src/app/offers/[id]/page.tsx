@@ -17,8 +17,10 @@ import {
   MapPin,
   FileSignature,
   ExternalLink,
+  Target,
 } from "lucide-react";
 import { LetterPanel } from "./letter-panel";
+import { TailoredPanel } from "./tailored-panel";
 
 export default async function OfferDetailPage({
   params,
@@ -45,6 +47,17 @@ export default async function OfferDetailPage({
     .select("full_name, phone, location")
     .eq("user_id", user!.id)
     .maybeSingle();
+
+  // Liens temporaires vers le CV et la lettre adaptés (skill « postuler »).
+  const signed = async (path: string | null | undefined) => {
+    if (!path) return null;
+    const { data } = await supabase.storage.from("cvs").createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  };
+  const [cvUrl, letterUrl] = await Promise.all([
+    signed(offer.tailored_cv_path),
+    signed(offer.tailored_letter_path),
+  ]);
 
   const meta = [
     { label: "Type de contrat", value: offer.contract_type ?? "—" },
@@ -179,7 +192,25 @@ export default async function OfferDetailPage({
           </div>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="flex flex-col gap-6 lg:col-span-1">
+          <Card className="p-5">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Target className="size-4 text-primary" aria-hidden />
+              Candidature adaptée
+            </h2>
+            <TailoredPanel
+              offerId={offer.id}
+              axis={offer.axis ?? null}
+              coverage={offer.ats_coverage ?? null}
+              keywords={offer.ats_keywords ?? []}
+              gaps={offer.gaps ?? null}
+              recruiter={offer.recruiter ?? null}
+              followUpDue={offer.follow_up_due ?? null}
+              followUpSentAt={offer.follow_up_sent_at ?? null}
+              cvUrl={cvUrl}
+              letterUrl={letterUrl}
+            />
+          </Card>
           <Card className="p-5 lg:sticky lg:top-6">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <FileSignature className="size-4 text-primary" aria-hidden />
