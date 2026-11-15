@@ -17,6 +17,8 @@ export function normalizeOfferUrl(raw: string | null | undefined) {
 export type MatchedOffer = {
   id: string;
   url: string | null;
+  title: string | null;
+  company: string | null;
   tailored_cv_path: string | null;
   tailored_letter_path: string | null;
 };
@@ -30,7 +32,7 @@ export async function findOfferByPageUrl(
   if (!key) return null;
   const { data } = await supabase
     .from("offers")
-    .select("id, url, tailored_cv_path, tailored_letter_path")
+    .select("id, url, title, company, tailored_cv_path, tailored_letter_path")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
     .limit(300);

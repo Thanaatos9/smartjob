@@ -15,7 +15,22 @@ import { findOfferByPageUrl } from "@/lib/offer-match";
 
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type TailoredOffer = { id: string; url: string | null; tailored_cv_path: string | null; tailored_letter_path: string | null };
+type TailoredOffer = {
+  id: string;
+  url: string | null;
+  title: string | null;
+  company: string | null;
+  tailored_cv_path: string | null;
+  tailored_letter_path: string | null;
+};
+
+const fileSlug = (v: string | null | undefined) =>
+  (v ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
 
 export async function GET(request: Request) {
   const { supabase, user } = await supabaseFromRequest(request);
@@ -38,7 +53,7 @@ export async function GET(request: Request) {
   if (offerId && UUID_RX.test(offerId)) {
     const { data } = await supabase
       .from("offers")
-      .select("id, url, tailored_cv_path, tailored_letter_path")
+      .select("id, url, title, company, tailored_cv_path, tailored_letter_path")
       .eq("id", offerId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -92,7 +107,13 @@ export async function GET(request: Request) {
   const prefix = kind === "letter"
     ? (cvLanguage === "en" ? "Cover letter" : "Lettre de motivation")
     : (cvLanguage === "en" ? "Resume" : "CV");
-  const filename = `${prefix}${base ? ` - ${base}` : ""}.pdf`;
+  // Document adapté : CV_<nom>_<entreprise>_<poste>.pdf (LM_… pour la lettre).
+  const tailoredName = [fileSlug(profile?.full_name), fileSlug(offer?.company), fileSlug(offer?.title)]
+    .filter(Boolean)
+    .join("_");
+  const filename = tailoredPath
+    ? `${kind === "letter" ? "LM" : "CV"}_${tailoredName || "adapte"}.pdf`
+    : `${prefix}${base ? ` - ${base}` : ""}.pdf`;
 
   return new Response(await blob.arrayBuffer(), {
     headers: {

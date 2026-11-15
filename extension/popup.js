@@ -12,10 +12,17 @@ const els = {
   fill: document.getElementById("fill"),
   prefs: document.getElementById("prefs"),
   status: document.getElementById("status"),
+  docs: document.getElementById("docs"),
+  docsTitle: document.getElementById("docsTitle"),
+  makeDocs: document.getElementById("makeDocs"),
+  dlRow: document.getElementById("dlRow"),
+  dlCv: document.getElementById("dlCv"),
+  dlLm: document.getElementById("dlLm"),
 };
 
 let currentTabUrl = null; // URL réelle de l'onglet
 let currentTabId = null;
+let currentTabTitle = "";
 let target = null; // { url, fromApplyPage } : ce qu'on enverra à la plateforme
 
 function setStatus(text, kind = "info") {
@@ -42,6 +49,7 @@ async function loadActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   currentTabUrl = tab?.url ?? null;
   currentTabId = tab?.id ?? null;
+  currentTabTitle = tab?.title ?? "";
   if (currentTabUrl && /^https?:/i.test(currentTabUrl)) {
     target = canonicalOfferUrl(currentTabUrl);
     els.url.textContent = target.url;
@@ -243,6 +251,97 @@ els.fill.addEventListener("click", async () => {
   }
 });
 
+// ---- CV et lettre adaptés de l'offre de l'onglet -------------------------
+
+let docsOfferId = null;
+
+function showDocs({ title, company, ready }) {
+  els.docs.classList.remove("hidden");
+  const label = [title, company].filter(Boolean).join(" · ");
+  els.docsTitle.textContent = label ? `CV et lettre : ${label}` : "CV et lettre de cette offre";
+  els.dlRow.classList.toggle("hidden", !ready);
+  els.makeDocs.classList.toggle("hidden", ready);
+}
+
+async function loadDocs() {
+  if (!currentTabUrl || !/^https?:/i.test(currentTabUrl)) return;
+  const { data } = await apiJson(`/api/extension/apply/docs?pageUrl=${encodeURIComponent(currentTabUrl)}`);
+  if (!data || data.error) return;
+  docsOfferId = data.found ? data.offerId : null;
+  showDocs({ title: data.title, company: data.company, ready: !!(data.found && data.hasCv) });
+}
+
+// Retrouve ou enregistre l'offre de la page, puis crée son CV et sa lettre.
+async function makeDocs() {
+  els.makeDocs.disabled = true;
+  setStatus("Création du CV et de la lettre adaptés (jusqu'à 30 s)…", "info");
+  try {
+    const text = await readActiveTabText();
+    const { data } = await apiJson("/api/extension/apply/page-offer", {
+      method: "POST",
+      body: { url: currentTabUrl, title: currentTabTitle, text },
+    });
+    if (!data || data.error) {
+      setStatus(data?.error || "Création impossible.", "error");
+      return;
+    }
+    if (!data.tailored) {
+      setStatus(data.warning || "CV adapté indisponible.", "error");
+      return;
+    }
+    docsOfferId = data.offerId;
+    await loadDocs();
+    setStatus(
+      `CV et lettre prêts${data.coverage != null ? ` (couverture ATS ${data.coverage} %)` : ""}.`,
+      "ok"
+    );
+  } finally {
+    els.makeDocs.disabled = false;
+  }
+}
+
+function filenameFromDisposition(header, fallback) {
+  const m = /filename\*=UTF-8''([^;]+)/i.exec(header || "") || /filename="?([^";]+)"?/i.exec(header || "");
+  try {
+    return m ? decodeURIComponent(m[1]) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function download(kind) {
+  if (!docsOfferId) return;
+  const button = kind === "letter" ? els.dlLm : els.dlCv;
+  button.disabled = true;
+  setStatus("Téléchargement…", "info");
+  try {
+    const qs = new URLSearchParams({ offerId: docsOfferId, lang: els.lang.value === "en" ? "en" : "fr" });
+    if (kind === "letter") qs.set("kind", "letter");
+    const { res, error } = await apiRequest(`/api/extension/apply/cv?${qs}`);
+    if (!res || !res.ok) {
+      const data = res ? await res.json().catch(() => ({})) : {};
+      setStatus(data.error || error || "Téléchargement impossible.", "error");
+      return;
+    }
+    const blob = await res.blob();
+    const name = filenameFromDisposition(res.headers.get("Content-Disposition"), kind === "letter" ? "LM.pdf" : "CV.pdf");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    setStatus(`${name} téléchargé.`, "ok");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+els.makeDocs.addEventListener("click", makeDocs);
+els.dlCv.addEventListener("click", () => download("cv"));
+els.dlLm.addEventListener("click", () => download("letter"));
+
 // Langue du CV et de la lettre : préférence partagée avec le panneau des sites
 // (auto = langue de l'offre).
 const LANG_KEY = "cvLang";
@@ -264,6 +363,7 @@ els.prefs.addEventListener("click", () => {
   await render();
   await loadActiveTab();
   await loadLanguage();
+  if (!els.mainView.classList.contains("hidden")) await loadDocs();
 })();
 
 // Version installée, pour vérifier d'un coup d'œil que l'extension est à jour.
