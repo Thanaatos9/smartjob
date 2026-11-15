@@ -265,3 +265,9 @@ els.prefs.addEventListener("click", () => {
   await loadActiveTab();
   await loadLanguage();
 })();
+
+// Version installée, pour vérifier d'un coup d'œil que l'extension est à jour.
+{
+  const el = document.getElementById("version");
+  if (el) el.textContent = `Version ${chrome.runtime.getManifest().version}`;
+}

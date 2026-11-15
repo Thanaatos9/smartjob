@@ -122,12 +122,12 @@ export function TailoredPanel({
 
       <div className="flex flex-wrap gap-2">
         {cvUrl && (
-          <a href={cvUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline">
+          <a href={cvUrl} download className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline">
             <Download className="size-4" aria-hidden /> CV adapté
           </a>
         )}
         {letterUrl && (
-          <a href={letterUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline">
+          <a href={letterUrl} download className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline">
             <Download className="size-4" aria-hidden /> Lettre adaptée
           </a>
         )}
