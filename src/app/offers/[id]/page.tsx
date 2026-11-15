@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { LetterPanel } from "./letter-panel";
 import { TailoredPanel } from "./tailored-panel";
+import { DocPreview } from "./doc-preview";
 
 export default async function OfferDetailPage({
   params,
@@ -48,15 +49,28 @@ export default async function OfferDetailPage({
     .eq("user_id", user!.id)
     .maybeSingle();
 
-  // Liens temporaires vers le CV et la lettre adaptés (skill « postuler »).
-  const signed = async (path: string | null | undefined) => {
+  // Liens temporaires vers le CV et la lettre adaptés : une version affichée
+  // dans la page (aperçu) et une version qui force le téléchargement.
+  const fileSlug = (v: string | null | undefined) =>
+    (v ?? "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40);
+  const nameParts = [fileSlug(profile?.full_name), fileSlug(offer.company), fileSlug(offer.title)].filter(Boolean).join("_");
+  const signed = async (path: string | null | undefined, download?: string) => {
     if (!path) return null;
-    const { data } = await supabase.storage.from("cvs").createSignedUrl(path, 3600);
+    const { data } = await supabase.storage
+      .from("cvs")
+      .createSignedUrl(path, 3600, download ? { download } : undefined);
     return data?.signedUrl ?? null;
   };
-  const [cvUrl, letterUrl] = await Promise.all([
+  const [cvUrl, letterUrl, cvDownload, letterDownload] = await Promise.all([
     signed(offer.tailored_cv_path),
     signed(offer.tailored_letter_path),
+    signed(offer.tailored_cv_path, `CV_${nameParts || "adapte"}.pdf`),
+    signed(offer.tailored_letter_path, `LM_${nameParts || "adaptee"}.pdf`),
   ]);
 
   const meta = [
@@ -115,6 +129,9 @@ export default async function OfferDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
+          {(cvUrl || letterUrl) && (
+            <DocPreview cvUrl={cvUrl} letterUrl={letterUrl} cvDownload={cvDownload} letterDownload={letterDownload} />
+          )}
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold">Correspondance avec ton profil</h2>
@@ -207,8 +224,8 @@ export default async function OfferDetailPage({
               recruiter={offer.recruiter ?? null}
               followUpDue={offer.follow_up_due ?? null}
               followUpSentAt={offer.follow_up_sent_at ?? null}
-              cvUrl={cvUrl}
-              letterUrl={letterUrl}
+              cvUrl={cvDownload}
+              letterUrl={letterDownload}
               fitScore={offer.fit_score ?? null}
             />
           </Card>
