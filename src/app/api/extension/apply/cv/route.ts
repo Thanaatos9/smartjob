@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
 import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
 import { tailorOffer } from "@/lib/tailor";
+import { findOfferByPageUrl } from "@/lib/offer-match";
 
 // Renvoie le PDF à attacher aux champs fichier des formulaires.
 //   ?lang=fr|en       langue du CV générique (repli sur l'autre langue)
@@ -14,18 +15,22 @@ import { tailorOffer } from "@/lib/tailor";
 
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function normalizeUrl(raw: string | null | undefined) {
-  if (!raw) return null;
-  try {
-    const u = new URL(raw);
-    const path = u.pathname.replace(/\/(apply|application|candidature|postuler)\/?$/i, "").replace(/\/+$/, "");
-    return `${u.hostname.replace(/^www\./, "")}${path}`.toLowerCase();
-  } catch {
-    return null;
-  }
-}
+type TailoredOffer = {
+  id: string;
+  url: string | null;
+  title: string | null;
+  company: string | null;
+  tailored_cv_path: string | null;
+  tailored_letter_path: string | null;
+};
 
-type TailoredOffer = { id: string; url: string | null; tailored_cv_path: string | null; tailored_letter_path: string | null };
+const fileSlug = (v: string | null | undefined) =>
+  (v ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
 
 export async function GET(request: Request) {
   const { supabase, user } = await supabaseFromRequest(request);
@@ -41,26 +46,20 @@ export async function GET(request: Request) {
   const language = parseLanguage(params.get("lang"));
   const kind = params.get("kind") === "letter" ? "letter" : "cv";
   const offerId = params.get("offerId");
-  const pageUrl = normalizeUrl(params.get("pageUrl"));
+  const pageUrl = params.get("pageUrl");
 
   // Offre ciblée, si elle a des documents adaptés.
   let offer: TailoredOffer | null = null;
   if (offerId && UUID_RX.test(offerId)) {
     const { data } = await supabase
       .from("offers")
-      .select("id, url, tailored_cv_path, tailored_letter_path")
+      .select("id, url, title, company, tailored_cv_path, tailored_letter_path")
       .eq("id", offerId)
       .eq("user_id", user.id)
       .maybeSingle();
     offer = data;
   } else if (pageUrl) {
-    const { data } = await supabase
-      .from("offers")
-      .select("id, url, tailored_cv_path, tailored_letter_path")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(200);
-    offer = (data ?? []).find((o) => normalizeUrl(o.url) === pageUrl) ?? null;
+    offer = await findOfferByPageUrl(supabase, user.id, pageUrl);
   }
 
   // "*" : tolère un déploiement qui précède la migration du CV anglais.
@@ -108,7 +107,13 @@ export async function GET(request: Request) {
   const prefix = kind === "letter"
     ? (cvLanguage === "en" ? "Cover letter" : "Lettre de motivation")
     : (cvLanguage === "en" ? "Resume" : "CV");
-  const filename = `${prefix}${base ? ` - ${base}` : ""}.pdf`;
+  // Document adapté : CV_<nom>_<entreprise>_<poste>.pdf (LM_… pour la lettre).
+  const tailoredName = [fileSlug(profile?.full_name), fileSlug(offer?.company), fileSlug(offer?.title)]
+    .filter(Boolean)
+    .join("_");
+  const filename = tailoredPath
+    ? `${kind === "letter" ? "LM" : "CV"}_${tailoredName || "adapte"}.pdf`
+    : `${prefix}${base ? ` - ${base}` : ""}.pdf`;
 
   return new Response(await blob.arrayBuffer(), {
     headers: {

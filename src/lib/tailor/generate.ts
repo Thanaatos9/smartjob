@@ -14,6 +14,7 @@ RÈGLES INVIOLABLES
 4. Ton sobre et factuel. À bannir : "votre entreprise leader", "passionné depuis toujours", "mettre mes compétences au service de".
 
 ÉTAPES
+0. "entreprise", "intitule" (intitulé exact du poste) et "lieu" : lus dans l'offre (le texte peut contenir le menu et le pied de page du site, ignore-les). "" si introuvable.
 A. Mots-clés ATS de l'offre, dans sa graphie exacte : "obligatoires" (bloc profil recherché, répétés, présents dans l'intitulé, 5 à 10), "souhaites" (cités une fois), "absents" (demandés mais absents du profil : ils n'apparaissent JAMAIS dans le CV ni la lettre).
 B. "score" sur 100 : couverture des exigences réelles (60), mots-clés présents dans le profil (25), séniorité et contrat (15). Sois honnête, ne gonfle pas.
 C. Axe : si le profil contient des "axes", en choisir UN (par l'intitulé, vérifié sur les exigences réelles) et reprendre son "developpee", son "appui" et son ordre de compétences. Sinon, choisir toi-même l'expérience la plus pertinente (developpee) et la deuxième (appui).
@@ -36,7 +37,7 @@ M. "lettre" : "appel" ("Madame, Monsieur," ou "Madame X," / "Monsieur X," si le 
 N. "ecarts" : une phrase sur ce que l'offre demande et que le profil n'a pas.
 
 FORMAT
-{"score":0,"lang":"fr","photo":true,"axe":"","titre":"","accroche":"","developpee":"<id>","appui":"<id>",
+{"entreprise":"","intitule":"","lieu":"","score":0,"lang":"fr","photo":true,"axe":"","titre":"","accroche":"","developpee":"<id>","appui":"<id>",
  "puces":{"<id>":["",""]},"competences":[{"label":"","items":""}],"formation":["<id>"],"autre":"",
  "mots_cles":{"obligatoires":[],"souhaites":[],"absents":[]},"ecarts":"","recruteur":null,"contact_recruteur":null,
  "lettre":{"appel":"","paragraphes":["","","","",""]}}`;
@@ -163,6 +164,9 @@ function normalize(o: Record<string, unknown>, profile: CvProfile, offerText: st
   const score = Math.max(0, Math.min(100, Math.round(Number(o.score))));
 
   return {
+    entreprise: str(o.entreprise).slice(0, 200),
+    intitule: str(o.intitule).slice(0, 300),
+    lieu: str(o.lieu).slice(0, 200),
     score: Number.isFinite(score) ? score : 0,
     lang,
     photo: o.photo !== false,

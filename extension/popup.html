@@ -77,6 +77,10 @@
       }
       .link { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 12px; padding: 0; }
       .settings { display: flex; gap: 6px; align-items: center; }
+      .docs { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; border-top: 1px solid var(--border); }
+      .docs-title { margin: 6px 0 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+      .dl-row { display: flex; gap: 8px; }
+      .dl-row button { flex: 1; padding: 9px 8px; font-size: 12px; }
       .version { margin: 0; font-size: 11px; color: var(--muted); text-align: center; }
       .settings input { flex: 1; font-size: 12px; padding: 6px 8px; }
       .gear {
@@ -122,6 +126,14 @@
           </select>
         </label>
         <button id="fill" class="secondary">Remplir ce formulaire</button>
+        <div id="docs" class="docs hidden">
+          <p id="docsTitle" class="docs-title">CV et lettre de cette offre</p>
+          <button id="makeDocs" class="secondary hidden">Créer le CV et la lettre adaptés</button>
+          <div id="dlRow" class="dl-row hidden">
+            <button id="dlCv" class="secondary">Télécharger le CV</button>
+            <button id="dlLm" class="secondary">Télécharger la lettre</button>
+          </div>
+        </div>
         <button id="prefs" class="link">Réglages d'auto-candidature →</button>
       </div>
 
