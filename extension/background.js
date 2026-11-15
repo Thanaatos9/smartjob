@@ -46,7 +46,15 @@ async function handle(message, sender) {
     case "cv": {
       // Seules 'fr' et 'en' sont acceptées : la valeur finit dans une URL.
       const lang = message.lang === "en" ? "en" : "fr";
-      const { res, status, error } = await apiRequest(`/api/extension/apply/cv?lang=${lang}`);
+      const qs = new URLSearchParams({ lang });
+      // Document adapté à l'offre (skill « postuler ») : par id, sinon par adresse de page.
+      if (typeof message.offerId === "string" && /^[0-9a-f-]{36}$/i.test(message.offerId)) {
+        qs.set("offerId", message.offerId);
+      } else if (typeof message.pageUrl === "string" && /^https?:\/\//.test(message.pageUrl)) {
+        qs.set("pageUrl", message.pageUrl.slice(0, 2000));
+      }
+      if (message.kind === "letter") qs.set("kind", "letter");
+      const { res, status, error } = await apiRequest(`/api/extension/apply/cv?${qs}`);
       if (!res) return { status, error };
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

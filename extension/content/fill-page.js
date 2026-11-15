@@ -39,6 +39,7 @@
       prefs: preferences,
       context: document.title,
       language,
+      pageUrl: location.href, // retrouve l'offre et son CV adapté, s'il y en a un
     });
 
     if (result.error) {

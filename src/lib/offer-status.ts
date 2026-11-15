@@ -10,6 +10,7 @@ export const STATUS_LABELS: Record<string, string> = {
   interview: "Entretien",
   rejected: "Refusé",
   accepted: "Accepté",
+  abandoned: "Abandonnée",
 };
 
 export const STATUS_VARIANTS: Record<string, BadgeVariant> = {
@@ -19,6 +20,7 @@ export const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   interview: "warning",
   rejected: "destructive",
   accepted: "success",
+  abandoned: "muted",
 };
 
 // Statuts considérés comme une candidature active (offre où l'on a postulé).

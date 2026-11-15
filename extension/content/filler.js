@@ -20,19 +20,22 @@
     return { config: data };
   };
 
-  // Un CV par langue, mis en cache pour la durée du run.
-  const cvFiles = {}; // langue → File | null (indisponible) ; absent : pas encore chargé
-  Filler.getCv = async (language = "fr") => {
-    if (language in cvFiles) return cvFiles[language];
-    const res = await C.send({ type: "cv", lang: language });
+  // Documents mis en cache pour la durée du run, par langue, offre et type
+  // (CV ou lettre) : le CV adapté d'une offre passe avant le CV générique.
+  const docFiles = {}; // clé → File | null (indisponible) ; absent : pas encore chargé
+  Filler.getDoc = async ({ language = "fr", offerId, pageUrl, kind = "cv" } = {}) => {
+    const key = `${kind}|${language}|${offerId || pageUrl || ""}`;
+    if (key in docFiles) return docFiles[key];
+    const res = await C.send({ type: "cv", lang: language, offerId, pageUrl, kind });
     if (!res || res.error || !res.base64) {
-      cvFiles[language] = null;
+      docFiles[key] = null;
       return null;
     }
     const bytes = Uint8Array.from(atob(res.base64), (c) => c.charCodeAt(0));
-    cvFiles[language] = new File([bytes], res.filename || "CV.pdf", { type: "application/pdf" });
-    return cvFiles[language];
+    docFiles[key] = new File([bytes], res.filename || "CV.pdf", { type: "application/pdf" });
+    return docFiles[key];
   };
+  Filler.getCv = (language = "fr", offerId, pageUrl) => Filler.getDoc({ language, offerId, pageUrl });
 
   // ---- Identité -----------------------------------------------------------
 
@@ -115,13 +118,21 @@
 
   const CV_LABEL = /\bcv\b|resume|curriculum/;
   const NOT_CV = /lettre|cover|motivation|portfolio|photo|certificat|diplome|releve|attestation/;
+  const LETTER_LABEL = /lettre|cover|motivation/;
 
   async function fillFile(f, ctx) {
     const t = C.norm(`${f.label} ${f.name} ${f.domId}`);
     const isCv = CV_LABEL.test(t) || (!NOT_CV.test(t) && (f.accept.includes("pdf") || t.trim() === ""));
-    if (!isCv) return f.required ? "unresolved" : "skipped";
+    if (!isCv) {
+      // Champ « lettre de motivation » en fichier : la lettre adaptée de l'offre, si elle existe.
+      if (LETTER_LABEL.test(t) && (ctx.offerId || ctx.pageUrl)) {
+        const letter = await Filler.getDoc({ language: ctx.language, offerId: ctx.offerId, pageUrl: ctx.pageUrl, kind: "letter" });
+        if (letter) return Fields.setFile(f, letter) ? "filled" : "unresolved";
+      }
+      return f.required ? "unresolved" : "skipped";
+    }
     if (ctx.resumeSelected && ctx.resumeSelected()) return "skipped"; // le site a déjà un CV sélectionné
-    const file = await Filler.getCv(ctx.language);
+    const file = await Filler.getCv(ctx.language, ctx.offerId, ctx.pageUrl);
     if (!file) return f.required ? "unresolved" : "skipped";
     return Fields.setFile(f, file) ? "filled" : "unresolved";
   }
@@ -129,7 +140,7 @@
   // ---- Remplissage d'une étape -------------------------------------------
 
   /**
-   * ctx : { profile, prefs, offerId, context, language, resumeSelected?() }
+   * ctx : { profile, prefs, offerId, pageUrl?, context, language, resumeSelected?() }
    *   language : 'fr' | 'en', langue du CV téléversé et de la lettre rédigée.
    * Renvoie { filled, asked, unresolved: [champ obligatoire resté sans réponse] }.
    */
