@@ -47,6 +47,10 @@ export type CvProfile = {
 };
 
 export type TailoredContent = {
+  // Lus dans l'offre, pour compléter une offre capturée depuis une page brute.
+  entreprise: string;
+  intitule: string;
+  lieu: string;
   score: number;
   lang: Lang;
   photo: boolean;

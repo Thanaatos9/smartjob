@@ -11,6 +11,8 @@ const ALLOWED = new Set([
   "POST /api/extension/apply/prepare",
   "POST /api/extension/apply/answers",
   "POST /api/extension/apply/result",
+  "POST /api/extension/apply/tailor",
+  "POST /api/extension/apply/page-offer",
 ]);
 
 // Conversion en base64 par morceaux (btoa plante sur de gros tableaux d'un bloc).
@@ -47,7 +49,7 @@ async function handle(message, sender) {
       // Seules 'fr' et 'en' sont acceptées : la valeur finit dans une URL.
       const lang = message.lang === "en" ? "en" : "fr";
       const qs = new URLSearchParams({ lang });
-      // Document adapté à l'offre (skill « postuler ») : par id, sinon par adresse de page.
+      // Document adapté à l'offre : par id, sinon par adresse de page.
       if (typeof message.offerId === "string" && /^[0-9a-f-]{36}$/i.test(message.offerId)) {
         qs.set("offerId", message.offerId);
       } else if (typeof message.pageUrl === "string" && /^https?:\/\//.test(message.pageUrl)) {

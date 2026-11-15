@@ -133,13 +133,20 @@ export async function tailorOffer(
       if (data) photo = new Uint8Array(await data.arrayBuffer());
     }
 
+    // Offre capturée depuis une page brute : entreprise, intitulé et lieu lus par le modèle.
+    const filled = {
+      company: offer.company || content.entreprise || null,
+      title: offer.title && !/\|| - |postuler|apply/i.test(offer.title) ? offer.title : content.intitule || offer.title,
+      location: offer.location || content.lieu || null,
+    };
+
     const cv = renderCv(profile, content, photo);
     const saved = offer.cover_letter_text?.trim();
     const letter = renderLetter(profile, {
       lang: content.lang,
-      entreprise: offer.company ?? "",
-      villeEntreprise: offer.location ?? "",
-      poste: offer.title ?? "",
+      entreprise: filled.company ?? "",
+      villeEntreprise: filled.location ?? "",
+      poste: filled.title ?? "",
       // Lettre déjà enregistrée : reprise telle quelle (elle contient son appel et sa formule).
       appel: saved ? null : content.lettre.appel,
       paragraphes: saved ? splitSavedLetter(saved) : content.lettre.paragraphes,
@@ -158,6 +165,9 @@ export async function tailorOffer(
     const coverage = atsCoverage(cv.content);
     const letterText = [content.lettre.appel, ...content.lettre.paragraphes].join("\n\n");
     await release({
+      company: filled.company,
+      title: filled.title,
+      location: filled.location,
       tailored_cv_path: cvPath,
       tailored_letter_path: letterPath,
       fit_score: content.score,

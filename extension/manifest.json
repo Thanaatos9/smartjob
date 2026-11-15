@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Candidature — Envoyer l'offre",
-  "version": "1.3.0",
-  "description": "Envoie l'offre de l'onglet courant vers la plateforme de candidature et remplit les candidatures sur LinkedIn, Welcome to the Jungle et JobTeaser.",
+  "version": "1.3.1",
+  "description": "Envoie l'offre de l'onglet courant vers la plateforme de candidature et remplit les candidatures sur LinkedIn, Welcome to the Jungle, JobTeaser et tout formulaire, avec un CV adapté à chaque offre.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

@@ -23,23 +23,63 @@
     return;
   }
 
-  const root = Fields.genericRoot();
-  if (!root) {
-    Panel.status("Aucun formulaire détecté sur cette page.", "warn");
+  if (!Fields.genericRoot()) {
+    // Formulaire chargé dans un cadre d'un autre site (ATS) : inaccessible d'ici.
+    const frame = [...document.querySelectorAll("iframe")].find(
+      (f) => C.isVisible(f) && f.src && !f.src.startsWith(location.origin) && f.offsetHeight > 200
+    );
+    Panel.status(
+      frame
+        ? "Le formulaire est dans un cadre d'un autre site : ouvre-le dans son propre onglet (lien ci-dessous), puis relance « Remplir ce formulaire »."
+        : "Aucun formulaire détecté. Clique d'abord sur « Postuler » pour ouvrir le formulaire, puis relance.",
+      "warn"
+    );
+    if (frame) Panel.log(frame.src, "warn");
     return;
   }
 
   // Langue du CV et de la lettre : choix du popup, sinon celle de la page.
   const langPref = await C.getLangPref();
-  const language = langPref === "auto" ? C.detectLanguage(document.body.innerText) : langPref;
+  const pageText = document.body.innerText || "";
+  const language = langPref === "auto" ? C.detectLanguage(pageText) : langPref;
+
+  // Offre de la page (enregistrée au besoin) et CV + lettre adaptés.
+  Panel.status("Préparation du CV et de la lettre adaptés (jusqu'à 30 s)…");
+  const prepared = await C.api("POST", "/api/extension/apply/page-offer", {
+    url: location.href,
+    title: document.title,
+    text: pageText.slice(0, 20000),
+    language,
+  });
+  const offerId = prepared && !prepared.error ? prepared.offerId : null;
+  if (!prepared || prepared.error) {
+    Panel.log(`CV adapté indisponible (${(prepared && prepared.error) || "pas de réponse"}) : CV du profil utilisé.`, "warn");
+  } else if (prepared.tailored) {
+    Panel.log(
+      `${prepared.created ? "Offre enregistrée dans smartjob. " : ""}CV et lettre adaptés ${prepared.generated ? "créés" : "retrouvés"}` +
+        `${prepared.coverage != null ? ` (couverture ATS ${prepared.coverage} %)` : ""}.`,
+      "ok"
+    );
+  } else if (prepared.warning) {
+    Panel.log(prepared.warning, "warn");
+  }
+
+  // Le formulaire a pu être redessiné pendant la préparation : on le relit.
+  Panel.status("Remplissage du formulaire…");
+  const root = Fields.genericRoot();
+  if (!root) {
+    Panel.status("Le formulaire a disparu de la page : rouvre-le puis relance.", "warn");
+    return;
+  }
 
   try {
     const result = await Filler.fillRoot(root, {
       profile,
       prefs: preferences,
+      offerId: offerId || undefined, // CV, lettre et réponses de cette offre
       context: document.title,
       language,
-      pageUrl: location.href, // retrouve l'offre et son CV adapté, s'il y en a un
+      pageUrl: location.href,
     });
 
     if (result.error) {
@@ -53,7 +93,7 @@
       for (const f of result.unresolved) Panel.log(`À compléter : ${f.label || f.name || "champ sans libellé"}`, "warn");
     } else {
       Panel.status(
-        `${result.filled} champ(s) rempli(s) (${language === "en" ? "CV anglais" : "CV français"}). Vérifie puis envoie toi-même.`,
+        `${result.filled} champ(s) rempli(s)${prepared && prepared.tailored ? " avec le CV adapté" : ` (${language === "en" ? "CV anglais" : "CV français"} du profil)`}. Vérifie puis envoie toi-même.`,
         "ok"
       );
     }

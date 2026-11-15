@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseFromRequest } from "@/lib/supabase/from-request";
 import { parseLanguage, pickCv } from "@/lib/auto-apply/cv";
 import { tailorOffer } from "@/lib/tailor";
+import { findOfferByPageUrl } from "@/lib/offer-match";
 
 // Renvoie le PDF à attacher aux champs fichier des formulaires.
 //   ?lang=fr|en       langue du CV générique (repli sur l'autre langue)
@@ -13,17 +14,6 @@ import { tailorOffer } from "@/lib/tailor";
 //   ?kind=letter      la lettre adaptée de l'offre (404 s'il n'y en a pas)
 
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function normalizeUrl(raw: string | null | undefined) {
-  if (!raw) return null;
-  try {
-    const u = new URL(raw);
-    const path = u.pathname.replace(/\/(apply|application|candidature|postuler)\/?$/i, "").replace(/\/+$/, "");
-    return `${u.hostname.replace(/^www\./, "")}${path}`.toLowerCase();
-  } catch {
-    return null;
-  }
-}
 
 type TailoredOffer = { id: string; url: string | null; tailored_cv_path: string | null; tailored_letter_path: string | null };
 
@@ -41,7 +31,7 @@ export async function GET(request: Request) {
   const language = parseLanguage(params.get("lang"));
   const kind = params.get("kind") === "letter" ? "letter" : "cv";
   const offerId = params.get("offerId");
-  const pageUrl = normalizeUrl(params.get("pageUrl"));
+  const pageUrl = params.get("pageUrl");
 
   // Offre ciblée, si elle a des documents adaptés.
   let offer: TailoredOffer | null = null;
@@ -54,13 +44,7 @@ export async function GET(request: Request) {
       .maybeSingle();
     offer = data;
   } else if (pageUrl) {
-    const { data } = await supabase
-      .from("offers")
-      .select("id, url, tailored_cv_path, tailored_letter_path")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(200);
-    offer = (data ?? []).find((o) => normalizeUrl(o.url) === pageUrl) ?? null;
+    offer = await findOfferByPageUrl(supabase, user.id, pageUrl);
   }
 
   // "*" : tolère un déploiement qui précède la migration du CV anglais.
