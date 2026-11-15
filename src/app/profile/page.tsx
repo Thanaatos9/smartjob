@@ -15,6 +15,12 @@ export default async function ProfilePage() {
     .eq("user_id", user!.id)
     .maybeSingle();
 
+  // Aperçu de la photo du CV enregistrée.
+  const photoPath = profile?.cv_profile?.photo_path as string | undefined;
+  const photoUrl = photoPath
+    ? (await supabase.storage.from("cvs").createSignedUrl(photoPath, 3600)).data?.signedUrl ?? null
+    : null;
+
   return (
     <AppShell
       title="Mon profil"
@@ -30,7 +36,11 @@ export default async function ProfilePage() {
           Avec ce profil, smartjob rédige un CV et une lettre d&apos;une page pour chaque offre, et l&apos;extension
           les joint à la candidature à la place de ton CV générique.
         </p>
-        <CvProfileForm initial={profile?.cv_profile ?? null} hasPhoto={!!profile?.cv_profile?.photo_path} />
+        <CvProfileForm
+          initial={profile?.cv_profile ?? null}
+          photoUrl={photoUrl}
+          photoMode={profile?.cv_profile?.photo_mode ?? "auto"}
+        />
       </Card>
     </AppShell>
   );

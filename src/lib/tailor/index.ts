@@ -126,12 +126,22 @@ export async function tailorOffer(
       return { status: "low_fit", fitScore: content.score, gaps: content.ecarts };
     }
 
-    // Photo du profil (facultative).
+    // Photo : réglage du profil (auto, toujours, jamais), puis disponibilité du fichier.
+    const mode = profile.photo_mode ?? "auto";
     let photo: Uint8Array | null = null;
-    if (profile.photo_path) {
+    let photoReason = "";
+    if (mode === "jamais") {
+      photoReason = "photo désactivée dans ton profil";
+    } else if (mode === "auto" && !content.photo) {
+      photoReason = content.photo_raison || "retirée pour cette offre (pays ou site de candidature)";
+    } else if (!profile.photo_path) {
+      photoReason = "aucune photo enregistrée dans ton profil";
+    } else {
       const { data } = await supabase.storage.from("cvs").download(profile.photo_path);
       if (data) photo = new Uint8Array(await data.arrayBuffer());
+      else photoReason = "photo du profil illisible : enregistre-la à nouveau";
     }
+    content.photo = !!photo;
 
     // Offre capturée depuis une page brute : entreprise, intitulé et lieu lus par le modèle.
     const filled = {
@@ -169,6 +179,8 @@ export async function tailorOffer(
       title: filled.title,
       location: filled.location,
       tailored_cv_path: cvPath,
+      cv_photo: !!photo,
+      cv_photo_reason: photoReason || null,
       tailored_letter_path: letterPath,
       fit_score: content.score,
       axis: content.axe || null,

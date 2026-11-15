@@ -44,6 +44,8 @@ export type CvProfile = {
     preuves?: string;
   }[];
   photo_path?: string | null; // bucket cvs
+  // auto : photo sauf pays et ATS où elle dessert ; toujours ; jamais.
+  photo_mode?: "auto" | "toujours" | "jamais";
 };
 
 export type TailoredContent = {
@@ -54,6 +56,7 @@ export type TailoredContent = {
   score: number;
   lang: Lang;
   photo: boolean;
+  photo_raison: string;
   axe: string;
   titre: string;
   accroche: string;

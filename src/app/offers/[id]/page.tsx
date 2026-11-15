@@ -227,6 +227,8 @@ export default async function OfferDetailPage({
               cvUrl={cvDownload}
               letterUrl={letterDownload}
               fitScore={offer.fit_score ?? null}
+              cvPhoto={offer.cv_photo ?? null}
+              cvPhotoReason={offer.cv_photo_reason ?? null}
             />
           </Card>
           <Card className="p-5 lg:sticky lg:top-6">
