@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { isCvProfile } from "@/lib/tailor/types";
 
 // Profil CV structuré (JSON) et photo du CV, depuis la page Profil.
-// multipart : cvProfile (texte JSON, facultatif), photo (JPEG ou PNG, facultatif).
+// multipart : cvProfile (texte JSON, facultatif), photo (JPEG ou PNG, facultatif),
+// photoMode (auto | toujours | jamais, facultatif).
 
 const MAX_PHOTO = 2 * 1024 * 1024;
 
@@ -37,7 +38,12 @@ export async function POST(request: Request) {
       );
     }
     // La photo déjà déposée est conservée si le JSON collé n'en parle pas.
-    profile = { ...parsed, photo_path: (parsed as { photo_path?: string }).photo_path ?? profile?.photo_path ?? null };
+    const p = parsed as { photo_path?: string; photo_mode?: string };
+    profile = {
+      ...parsed,
+      photo_path: p.photo_path ?? profile?.photo_path ?? null,
+      photo_mode: p.photo_mode ?? profile?.photo_mode ?? "auto",
+    };
   }
 
   const photo = form.get("photo");
@@ -46,11 +52,19 @@ export async function POST(request: Request) {
     if (photo.size > MAX_PHOTO) return NextResponse.json({ error: "Photo : 2 Mo maximum" }, { status: 413 });
     const bytes = new Uint8Array(await photo.arrayBuffer());
     const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
-    if (!isJpeg) return NextResponse.json({ error: "Photo : JPEG attendu" }, { status: 400 });
-    const path = `${user.id}/photo.jpg`;
-    const { error } = await supabase.storage.from("cvs").upload(path, bytes, { contentType: "image/jpeg", upsert: true });
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    if (!isJpeg && !isPng) return NextResponse.json({ error: "Photo : JPEG ou PNG attendu" }, { status: 400 });
+    const path = `${user.id}/photo.${isPng ? "png" : "jpg"}`;
+    const { error } = await supabase.storage
+      .from("cvs")
+      .upload(path, bytes, { contentType: isPng ? "image/png" : "image/jpeg", upsert: true });
     if (error) return NextResponse.json({ error: error.message }, { status: 502 });
     profile = { ...profile, photo_path: path };
+  }
+
+  const mode = form.get("photoMode");
+  if (profile && (mode === "auto" || mode === "toujours" || mode === "jamais")) {
+    profile = { ...profile, photo_mode: mode };
   }
 
   if (!profile) return NextResponse.json({ error: "Rien à enregistrer" }, { status: 400 });

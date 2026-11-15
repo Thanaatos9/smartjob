@@ -71,7 +71,7 @@ function layoutCv(
   const withPhoto = !!photo && c.photo;
   const tx = withPhoto ? m + 30 : m;
   const tw = PAGE_W - m - tx;
-  if (withPhoto && draw) doc.addImage(photo!, "JPEG", m, y, 25, 25);
+  if (withPhoto && draw) doc.addImage(photo!, photo![0] === 0x89 ? "PNG" : "JPEG", m, y, 25, 25);
   let by = y;
   font("bold", 20);
   by += lh(20, 1);
@@ -231,7 +231,7 @@ export function renderCv(
     }
   }
 
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
   doc.setProperties({ title: `CV ${p.identite.nom}`, author: p.identite.nom });
   layoutCv(doc, p, c, photo, s, true);
   return { pdf: new Uint8Array(doc.output("arraybuffer")), onePage: ok, content: c, steps };
@@ -298,7 +298,7 @@ export function renderLetter(
       break;
     }
   }
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const doc = new jsPDF({ unit: "mm", format: "a4", compress: true });
   doc.setProperties({ title: `Lettre de motivation ${id.nom}`, author: id.nom });
   layout(doc, chosen[0], chosen[1], true);
   return { pdf: new Uint8Array(doc.output("arraybuffer")), onePage: ok };

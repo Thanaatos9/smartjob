@@ -20,6 +20,8 @@ export function TailoredPanel({
   cvUrl,
   letterUrl,
   fitScore,
+  cvPhoto,
+  cvPhotoReason,
 }: {
   offerId: string;
   axis: string | null;
@@ -32,6 +34,8 @@ export function TailoredPanel({
   cvUrl: string | null;
   letterUrl: string | null;
   fitScore: number | null;
+  cvPhoto: boolean | null;
+  cvPhotoReason: string | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -83,6 +87,13 @@ export function TailoredPanel({
         <p className="text-muted-foreground">
           <span className="font-medium text-foreground">Adéquation : </span>
           {fitScore}/100{fitScore < 70 ? " (sous le seuil de 70 : en mode auto, l'extension ne postule pas)" : ""}
+        </p>
+      )}
+
+      {cvUrl && cvPhoto !== null && (
+        <p className="text-muted-foreground">
+          <span className="font-medium text-foreground">Photo : </span>
+          {cvPhoto ? "incluse" : `absente (${cvPhotoReason ?? "raison inconnue"})`}
         </p>
       )}
 

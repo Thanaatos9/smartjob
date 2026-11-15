@@ -24,7 +24,7 @@ F. "puces" : un tableau par id d'expérience, pour TOUTES les expériences. 4 pu
 G. "competences" : 4 lignes {label, items}, dans l'ordre de l'axe, items séparés par " · ". Retirer les outils hors sujet plutôt qu'en ajouter.
 H. Placement des obligatoires : titre, accroche, puces, puis compétences. Chacun 2 fois maximum dans le CV. Cible : 100 % des obligatoires présents dans le profil, 60 % des souhaités.
 I. "formation" : ids à afficher (toutes par défaut). "autre" : une ligne tirée des extras si elle parle à l'offre, sinon "".
-J. "photo" : false si le poste est au Royaume-Uni, en Irlande, aux États-Unis, au Canada, en Australie, dans le secteur public allemand, ou si l'offre passe par Workday ou Taleo. Sinon true.
+J. "photo" : false seulement si le poste est basé au Royaume-Uni, en Irlande, aux États-Unis, au Canada, en Australie, dans le secteur public allemand, ou si l'offre indique explicitement une candidature via Workday ou Taleo. Une offre rédigée en anglais pour un poste en France garde la photo. Sinon true. "photo_raison" : la raison en une courte phrase si false, sinon "".
 K. "lang" : "en" si l'offre est rédigée en anglais (CV et lettre alors en anglais), sinon "fr".
 L. "recruteur" et "contact_recruteur" : seulement s'ils sont écrits dans l'offre, sinon null. Ne jamais deviner.
 M. "lettre" : "appel" ("Madame, Monsieur," ou "Madame X," / "Monsieur X," si le recruteur est connu ; en anglais "Dear Hiring Manager,") et 5 "paragraphes", 300 à 380 mots au total :
@@ -37,7 +37,7 @@ M. "lettre" : "appel" ("Madame, Monsieur," ou "Madame X," / "Monsieur X," si le 
 N. "ecarts" : une phrase sur ce que l'offre demande et que le profil n'a pas.
 
 FORMAT
-{"entreprise":"","intitule":"","lieu":"","score":0,"lang":"fr","photo":true,"axe":"","titre":"","accroche":"","developpee":"<id>","appui":"<id>",
+{"entreprise":"","intitule":"","lieu":"","score":0,"lang":"fr","photo":true,"photo_raison":"","axe":"","titre":"","accroche":"","developpee":"<id>","appui":"<id>",
  "puces":{"<id>":["",""]},"competences":[{"label":"","items":""}],"formation":["<id>"],"autre":"",
  "mots_cles":{"obligatoires":[],"souhaites":[],"absents":[]},"ecarts":"","recruteur":null,"contact_recruteur":null,
  "lettre":{"appel":"","paragraphes":["","","","",""]}}`;
@@ -50,8 +50,9 @@ export async function generateTailoredContent(input: {
   if (!apiKey) throw new Error("OPENAI_API_KEY n'est pas configuré");
 
   // La photo et les coordonnées ne servent pas à la rédaction.
-  const { photo_path: _photo, identite, ...rest } = input.profile;
+  const { photo_path: _photo, photo_mode: _mode, identite, ...rest } = input.profile;
   void _photo;
+  void _mode;
   // Durées calculées une fois ici : le modèle peut écrire « 18 mois » sans l'inventer.
   const profileForModel = {
     nom: identite.nom,
@@ -170,6 +171,7 @@ function normalize(o: Record<string, unknown>, profile: CvProfile, offerText: st
     score: Number.isFinite(score) ? score : 0,
     lang,
     photo: o.photo !== false,
+    photo_raison: o.photo === false ? noEmDash(str(o.photo_raison)) : "",
     axe: noEmDash(str(o.axe)),
     titre: noEmDash(str(o.titre)) || profile.experiences[0].poste[lang] || profile.experiences[0].poste.fr,
     accroche: keepTraceableNumbers(noEmDash(str(o.accroche)), allText),
