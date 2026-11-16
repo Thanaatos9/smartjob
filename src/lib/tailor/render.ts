@@ -143,6 +143,15 @@ function layoutCv(
     y += 2;
   }
 
+  // Ordre des sections : expériences, formation, compétences (toujours en bas).
+  heading(LIB[c.lang].form);
+  for (const f of p.formation) {
+    if (!c.formation.includes(f.id) && !f.toujours) continue;
+    row(`${i18n(f.titre, c.lang)}${f.ecole ? `, ${f.ecole}` : ""}`, i18n(f.dates, c.lang));
+    if (f.detail) italic(i18n(f.detail, c.lang));
+    y += 1;
+  }
+
   heading(LIB[c.lang].comp);
   for (const comp of c.competences) {
     font("bold", s.fs);
@@ -155,14 +164,6 @@ function layoutCv(
     font("normal", s.fs);
     text(items, m + 39, y, { lineHeightFactor: 1.28 });
     y += lh(s.fs) * (Math.max(label.length, items.length) - 1) + 1;
-  }
-
-  heading(LIB[c.lang].form);
-  for (const f of p.formation) {
-    if (!c.formation.includes(f.id) && !f.toujours) continue;
-    row(`${i18n(f.titre, c.lang)}${f.ecole ? `, ${f.ecole}` : ""}`, i18n(f.dates, c.lang));
-    if (f.detail) italic(i18n(f.detail, c.lang));
-    y += 1;
   }
 
   if (c.autre) {
