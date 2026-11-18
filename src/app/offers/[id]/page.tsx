@@ -229,6 +229,7 @@ export default async function OfferDetailPage({
               fitScore={offer.fit_score ?? null}
               cvPhoto={offer.cv_photo ?? null}
               cvPhotoReason={offer.cv_photo_reason ?? null}
+              cvLang={offer.cv_lang === "en" || offer.cv_lang === "fr" ? offer.cv_lang : null}
             />
           </Card>
           <Card className="p-5 lg:sticky lg:top-6">

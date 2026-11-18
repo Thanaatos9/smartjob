@@ -10,8 +10,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
 
-  const body = (await request.json().catch(() => ({}))) as { regenerate?: unknown };
-  const result = await tailorOffer(supabase, user.id, id, { force: true, regenerate: body.regenerate === true });
+  const body = (await request.json().catch(() => ({}))) as { regenerate?: unknown; lang?: unknown };
+  // Langue choisie sur la fiche (fr | en) ; absente ou « auto » : déduite de l'offre.
+  const lang = body.lang === "fr" || body.lang === "en" ? body.lang : undefined;
+  const result = await tailorOffer(supabase, user.id, id, { force: true, regenerate: body.regenerate === true, lang });
 
   if (result.status === "no_profile") {
     return NextResponse.json(

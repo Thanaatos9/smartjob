@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, Sparkles, Upload } from "lucide-react";
 
+type Lang = "auto" | "fr" | "en";
+const LANGS: { value: Lang; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "fr", label: "Français" },
+  { value: "en", label: "English" },
+];
+
 // CV et lettre adaptés à l'offre : génération (ou régénération) dans l'app,
 // ciblage ATS, documents, relance, et dépôt manuel de PDF faits ailleurs.
 export function TailoredPanel({
@@ -22,6 +29,7 @@ export function TailoredPanel({
   fitScore,
   cvPhoto,
   cvPhotoReason,
+  cvLang,
 }: {
   offerId: string;
   axis: string | null;
@@ -36,11 +44,14 @@ export function TailoredPanel({
   fitScore: number | null;
   cvPhoto: boolean | null;
   cvPhotoReason: string | null;
+  cvLang: "fr" | "en" | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  // Langue du CV et de la lettre : celle du CV actuel par défaut, sinon déduite de l'offre.
+  const [lang, setLang] = useState<Lang>(cvLang ?? "auto");
 
   async function generate() {
     setGenerating(true);
@@ -48,7 +59,7 @@ export function TailoredPanel({
     const res = await fetch(`/api/offers/${offerId}/tailor`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ regenerate: !!cvUrl }),
+      body: JSON.stringify({ regenerate: !!cvUrl, lang }),
     });
     setGenerating(false);
     if (!res.ok) {
@@ -78,6 +89,32 @@ export function TailoredPanel({
 
   return (
     <div className="flex flex-col gap-3 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span id="cv-lang-label" className="text-xs font-medium text-muted-foreground">Langue du CV</span>
+        <div role="radiogroup" aria-labelledby="cv-lang-label" className="inline-flex rounded-md border border-border p-0.5">
+          {LANGS.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              role="radio"
+              aria-checked={lang === l.value}
+              disabled={generating}
+              onClick={() => setLang(l.value)}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                lang === l.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {cvUrl && cvLang && lang !== "auto" && lang !== cvLang && (
+        <p className="text-xs text-muted-foreground">
+          Le CV actuel est en {cvLang === "en" ? "anglais" : "français"} : régénère pour l&apos;obtenir en {lang === "en" ? "anglais" : "français"}.
+        </p>
+      )}
+
       <Button type="button" size="sm" onClick={generate} disabled={generating}>
         <Sparkles className="size-4" aria-hidden />
         {generating ? "Rédaction en cours (30 s environ)…" : cvUrl ? "Régénérer CV + lettre" : "Générer CV + lettre"}

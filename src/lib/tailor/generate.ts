@@ -45,6 +45,8 @@ FORMAT
 export async function generateTailoredContent(input: {
   profile: CvProfile;
   offer: { title: string | null; company: string | null; location: string | null; text: string };
+  // Langue imposée par l'utilisateur ; sinon déduite de l'offre (étape K).
+  lang?: Lang;
 }): Promise<TailoredContent> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY n'est pas configuré");
@@ -80,6 +82,14 @@ export async function generateTailoredContent(input: {
             `Entreprise : ${input.offer.company ?? ""}`,
             `Lieu : ${input.offer.location ?? ""}`,
             input.offer.text.slice(0, 15000),
+            ...(input.lang
+              ? [
+                  "\n### Langue imposée",
+                  input.lang === "en"
+                    ? `"lang" vaut "en" : rédige titre, accroche, puces, compétences, autre et toute la lettre en anglais, quelle que soit la langue de l'offre. Les mots-clés ATS restent dans la graphie de l'offre.`
+                    : `"lang" vaut "fr" : rédige titre, accroche, puces, compétences, autre et toute la lettre en français, quelle que soit la langue de l'offre. Les mots-clés ATS restent dans la graphie de l'offre.`,
+                ]
+              : []),
           ].join("\n"),
         },
       ],
@@ -91,7 +101,9 @@ export async function generateTailoredContent(input: {
   const data = await res.json();
   const raw = data.choices?.[0]?.message?.content;
   if (!raw) throw new Error("Réponse OpenAI vide");
-  return normalize(JSON.parse(raw), input.profile, input.offer.text);
+  const parsed = JSON.parse(raw);
+  if (input.lang && parsed && typeof parsed === "object") parsed.lang = input.lang;
+  return normalize(parsed, input.profile, input.offer.text);
 }
 
 // ---------------------------------------------------------------- garde-fous

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateTailoredContent } from "./generate";
 import { atsCoverage, renderCv, renderLetter } from "./render";
-import { isCvProfile, type CvProfile } from "./types";
+import { isCvProfile, type CvProfile, type Lang } from "./types";
 
 // Génère et range le CV et la lettre adaptés d'une offre :
 // profil structuré + texte de l'offre → contenu (OpenAI) → PDF une page → bucket
@@ -56,11 +56,20 @@ function splitSavedLetter(text: string) {
   return text.split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean);
 }
 
+// Langue d'une lettre enregistrée, par ses mots outils : une lettre écrite dans
+// l'autre langue que le CV n'est pas reprise (changement de langue sur la fiche).
+function letterLang(text: string): Lang {
+  const count = (re: RegExp) => (text.toLowerCase().match(re) ?? []).length;
+  const fr = count(/\b(je|vous|les|des|est|pour|avec|dans|une|mon|mes|votre)\b/g);
+  const en = count(/\b(i|you|the|and|is|for|with|in|my|your|of|to)\b/g);
+  return en > fr ? "en" : "fr";
+}
+
 export async function tailorOffer(
   supabase: SupabaseClient,
   userId: string,
   offerId: string,
-  opts: { force?: boolean; regenerate?: boolean } = {}
+  opts: { force?: boolean; regenerate?: boolean; lang?: Lang } = {}
 ): Promise<TailorResult> {
   const profile = await loadCvProfile(supabase, userId);
   if (!profile) return { status: "no_profile" };
@@ -119,6 +128,7 @@ export async function tailorOffer(
     const content = await generateTailoredContent({
       profile,
       offer: { title: offer.title, company: offer.company, location: offer.location, text },
+      lang: opts.lang,
     });
 
     if (content.score < FIT_THRESHOLD && !opts.force) {
@@ -151,7 +161,8 @@ export async function tailorOffer(
     };
 
     const cv = renderCv(profile, content, photo);
-    const saved = offer.cover_letter_text?.trim();
+    const savedText = offer.cover_letter_text?.trim();
+    const saved = savedText && letterLang(savedText) === content.lang ? savedText : undefined;
     const letter = renderLetter(profile, {
       lang: content.lang,
       entreprise: filled.company ?? "",
@@ -191,6 +202,8 @@ export async function tailorOffer(
       ...(saved ? {} : { cover_letter_text: letterText }),
       ...(offer.status === "found" ? { status: "letter_generated" } : {}),
     });
+    // À part : sans la migration 0014, l'échec de cette mise à jour ne bloque rien.
+    await supabase.from("offers").update({ cv_lang: content.lang }).eq("id", offerId).eq("user_id", userId);
 
     return { status: "ready", cvPath, letterPath, fitScore: content.score, coverage, generated: true };
   } catch (err) {
