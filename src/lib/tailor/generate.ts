@@ -63,12 +63,16 @@ export async function generateTailoredContent(input: {
     experiences: rest.experiences.map((e) => ({ ...e, duree_mois: durationMonths(e.debut, e.fin) })),
   };
 
+  // Modèle de rédaction : gpt-6.2-sol par défaut (rapide, moins cher qu'Astra).
+  // Les modèles récents refusent une température personnalisée : on ne la
+  // passe qu'aux anciens modèles gpt-4*.
+  const model = process.env.OPENAI_TAILOR_MODEL || "gpt-6.2-sol";
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: process.env.OPENAI_TAILOR_MODEL || "gpt-4o-mini",
-      temperature: 0.3,
+      model,
+      ...(model.startsWith("gpt-4") ? { temperature: 0.3 } : {}),
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM },
@@ -94,10 +98,10 @@ export async function generateTailoredContent(input: {
         },
       ],
     }),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(180_000),
   });
 
-  if (!res.ok) throw new Error(`OpenAI API a échoué (${res.status})`);
+  if (!res.ok) throw new Error(`OpenAI API a échoué (${res.status}, modèle ${model}) : ${(await res.text().catch(() => "")).slice(0, 200)}`);
   const data = await res.json();
   const raw = data.choices?.[0]?.message?.content;
   if (!raw) throw new Error("Réponse OpenAI vide");

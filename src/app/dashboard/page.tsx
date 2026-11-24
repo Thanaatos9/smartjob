@@ -6,6 +6,7 @@ import { OffersExplorer, type ExplorerOffer } from "@/components/offers-explorer
 import { Card } from "@/components/ui/card";
 import { Briefcase, Send, CalendarCheck, Trophy } from "lucide-react";
 import { AddOfferForm } from "./add-offer-form";
+import { VeilleCard, type VeilleRunSummary } from "./veille-card";
 
 export default async function DashboardPage({
   searchParams,
@@ -29,6 +30,22 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false })
     .limit(50);
 
+  // Dernier passage de la veille (tables absentes avant la migration 0015 : ignoré).
+  const [{ data: lastRun }, { count: waiting }] = await Promise.all([
+    supabase
+      .from("veille_runs")
+      .select("status, started_at, finished_at, emails_read, processed, created, ready, rejected, duplicates")
+      .eq("user_id", user!.id)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("veille_seen")
+      .select("url_key", { count: "exact", head: true })
+      .eq("user_id", user!.id)
+      .eq("status", "queued"),
+  ]);
+
   const allOffers = (offers ?? []) as ExplorerOffer[];
 
   const count = (s: string) => allOffers.filter((o) => o.status === s).length;
@@ -50,6 +67,8 @@ export default async function DashboardPage({
           <StatCard key={s.label} {...s} />
         ))}
       </section>
+
+      <VeilleCard run={(lastRun as VeilleRunSummary | null) ?? null} waiting={waiting ?? 0} />
 
       <Card className="mb-8 p-5">
         <h2 className="mb-4 text-sm font-semibold">Ajouter une offre</h2>

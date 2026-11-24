@@ -29,6 +29,16 @@ const RULES: { label: string; className: string; match: RegExp }[] = [
     match: /indeed/i,
   },
   {
+    label: "HelloWork",
+    className: "border-transparent bg-orange-500/15 text-orange-700 dark:text-orange-300",
+    match: /hellowork/i,
+  },
+  {
+    label: "JobTeaser",
+    className: "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    match: /jobteaser/i,
+  },
+  {
     label: "LinkedIn",
     className: "border-transparent bg-sky-600/15 text-sky-700 dark:text-sky-300",
     match: /linkedin/i,
