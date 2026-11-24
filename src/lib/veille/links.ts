@@ -11,6 +11,14 @@ export type JobLink = {
   hint: string | null;
 };
 
+// Garde le pays de l'offre (fr.indeed.com, nl.indeed.com…) : une offre néerlandaise
+// n'existe pas sur fr.indeed.com.
+function indeedJob(host: string, jk: string) {
+  const h = host.toLowerCase().replace(/^www\./, "");
+  const site = /^[a-z]{2}\.indeed\./.test(h) ? h : "fr.indeed.com";
+  return { key: `indeed:${jk.toLowerCase()}`, url: `https://${site}/viewjob?jk=${jk.toLowerCase()}` };
+}
+
 type Rule = {
   source: VeilleSource;
   match: RegExp;
@@ -30,8 +38,15 @@ const RULES: Rule[] = [
   },
   {
     source: "indeed",
-    match: /indeed\.[a-z.]+\/[^\s"'<>]*?[?&](?:jk|vjk)=([0-9a-f]{16})/i,
-    build: (m) => ({ key: `indeed:${m[1].toLowerCase()}`, url: `https://fr.indeed.com/viewjob?jk=${m[1].toLowerCase()}` }),
+    match: /((?:[a-z]{2}\.)?indeed\.[a-z.]+)\/[^\s"'<>]*?[?&](?:jk|vjk)=([0-9a-f]{16})/i,
+    build: (m) => indeedJob(m[1], m[2]),
+  },
+  {
+    // Alertes « match » : lien publicitaire pagead/clk sans jk ; l'identifiant
+    // de l'offre termine le paramètre jrtk (5-xxx-1-<jeton>-<jk>).
+    source: "indeed",
+    match: /((?:[a-z]{2}\.)?indeed\.[a-z.]+)\/[^\s"'<>]*?[?&]jrtk=[0-9a-z-]*?-([0-9a-f]{16})(?=[&"'\s]|$)/i,
+    build: (m) => indeedJob(m[1], m[2]),
   },
   {
     source: "wttj",
