@@ -68,7 +68,7 @@ export async function runVeille(supabase: SupabaseClient, userId: string, runId:
             const { data } = await supabase
               .from("veille_seen")
               .upsert(
-                fresh.map((l) => ({ user_id: userId, url_key: l.key, source: l.source, url: l.url, hint: l.hint, run_id: runId })),
+                fresh.map((l) => ({ user_id: userId, url_key: l.key, source: l.source, url: l.url, hint: l.hint, context: l.context, run_id: runId })),
                 { onConflict: "user_id,url_key", ignoreDuplicates: true }
               )
               .select("url_key");
@@ -88,14 +88,14 @@ export async function runVeille(supabase: SupabaseClient, userId: string, runId:
     // 2. Traitement de la file, du plus ancien au plus récent.
     const { data: queue } = await supabase
       .from("veille_seen")
-      .select("url_key, source, url, hint")
+      .select("url_key, source, url, hint, context")
       .eq("user_id", userId)
       .eq("status", "queued")
       .order("created_at", { ascending: true })
       .limit(prefs.max_per_run);
 
     const profile = await loadExtractionProfile(supabase, userId);
-    const items: JobLink[] = (queue ?? []).map((q) => ({ key: q.url_key, source: q.source, url: q.url, hint: q.hint }));
+    const items: JobLink[] = (queue ?? []).map((q) => ({ key: q.url_key, source: q.source, url: q.url, hint: q.hint, context: q.context }));
     let cursor = 0;
     const worker = async () => {
       while (cursor < items.length) {
@@ -173,13 +173,20 @@ async function processLink(
   if (hasExcludedWord(item.hint, prefs.exclude_keywords)) return { outcome: "excluded", offerId: null };
 
   // b. Extraction par le workflow n8n habituel (il écrit l'offre dans Supabase).
+  //    Indeed bloque la lecture de ses pages depuis un serveur : on lui donne
+  //    directement le texte de l'alerte. Ailleurs, la page d'abord, l'alerte ensuite.
+  const extract = async (text?: string) => {
+    try {
+      const result = (await triggerOfferExtraction({ userId, ...profile, url: item.url, text })) as { id?: unknown } | null;
+      return result && typeof result.id === "string" ? result.id : null;
+    } catch {
+      return null;
+    }
+  };
+  const alertText = item.context ? `${item.context}\n\nLien de l'offre : ${item.url}` : undefined;
   let offerId: string | null = null;
-  try {
-    const result = (await triggerOfferExtraction({ userId, ...profile, url: item.url })) as { id?: unknown } | null;
-    if (result && typeof result.id === "string") offerId = result.id;
-  } catch {
-    offerId = null;
-  }
+  if (item.source !== "indeed" || !alertText) offerId = await extract();
+  if (!offerId && alertText) offerId = await extract(alertText);
   if (!offerId) {
     const { data: byUrl } = await supabase
       .from("offers")
@@ -199,7 +206,7 @@ async function processLink(
       .from("offers")
       .insert({
         user_id: userId,
-        title: item.hint,
+        title: item.hint ?? "Offre à capturer avec l'extension",
         url: item.url,
         domain: new URL(item.url).hostname.replace(/^www\./, ""),
         status: "found",
